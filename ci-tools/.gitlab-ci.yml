@@ -1,0 +1,54 @@
+---
+
+.ci-tools-defaults: &defaults
+  image: docker:19.03.1
+  services:
+    - docker:19.03.1-dind
+  variables:
+    # Use TLS https://docs.gitlab.com/ee/ci/docker/using_docker_build.html#tls-enabled
+    DOCKER_TLS_CERTDIR: "/certs"
+    # Docker-in-Docker Caching. See https://docs.gitlab.com/ce/ci/docker/using_docker_build.html#using-docker-caching
+    DOCKER_HOST: tcp://docker:2376
+    # Custom
+    DIR: "ci-tools"
+  before_script:
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
+
+build:ci-tools:
+  stage: .pre
+  script:
+    - echo "--- $DIR -----------------------------------------------------"
+    - cd $DIR
+    #TODO: Consider multiple sources as cache
+    - docker pull $CI_REGISTRY_IMAGE/$DIR:$CI_COMMIT_REF_SLUG || true
+    - docker image ls
+    - docker build --cache-from $CI_REGISTRY_IMAGE/$DIR:$CI_COMMIT_REF_SLUG -t $CI_REGISTRY_IMAGE/$DIR:$CI_COMMIT_SHA -t $CI_REGISTRY_IMAGE/$DIR:$CI_COMMIT_REF_SLUG .
+    - docker push $CI_REGISTRY_IMAGE/$DIR:$CI_COMMIT_REF_SLUG
+    - cd ..
+  only:
+    changes:
+      - ci-tools/Dockerfile
+  variables:
+  <<: *defaults
+
+push:ci-tools:
+  # See https://docs.gitlab.com/ee/ci/yaml/#requirements-and-limitations https://gitlab.com/gitlab-org/gitlab/issues/30632
+  #stage: .pre
+  stage: pre_tests
+  only:
+    refs:
+      - master
+    changes:
+      - ci-tools/Dockerfile
+  script:
+    - echo "--- $DIR -----------------------------------------------------"
+    - docker image ls
+    # Download the image
+    - docker pull $CI_REGISTRY_IMAGE/$DIR:$CI_COMMIT_REF_SLUG
+    - docker image tag $CI_REGISTRY_IMAGE/$DIR:$CI_COMMIT_REF_SLUG $CI_REGISTRY_IMAGE/$DIR:latest
+    # push latest
+    - docker push $CI_REGISTRY_IMAGE/$DIR:latest
+  needs:
+    - build:ci-tools
+  <<: *defaults
+

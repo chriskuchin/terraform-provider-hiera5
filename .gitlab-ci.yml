@@ -1,0 +1,65 @@
+---
+
+image: registry.gitlab.com/sbitio/terraform-provider-hiera5/ci-tools:latest
+
+cache:
+  paths:
+    - /apt-cache
+    - /go/src/github.com
+    - /go/src/golang.org
+    - /go/src/google.golang.org
+    - /go/src/gopkg.in
+
+stages:
+  - pre_tests
+  - test
+  - build
+
+before_script:
+  - mkdir -p /go/src/gitlab.com/$CI_PROJECT_NAMESPACE /go/src/_/builds
+  - cp -r $CI_PROJECT_DIR /go/src/gitlab.com/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME
+  - ln -s /go/src/gitlab.com/$CI_PROJECT_NAMESPACE /go/src/_/builds/$CI_PROJECT_NAMESPACE
+  - make dep
+
+variables:
+  GO111MODULE: "on"
+
+unit_tests:
+  stage: test
+  script:
+    - make test
+
+race_detector:
+  stage: test
+  script:
+    - make race
+
+memory_sanitizer:
+  stage: test
+  script:
+    - make msan
+
+code_coverage:
+  stage: test
+  script:
+    - make coverage
+
+code_coverage_report:
+  stage: test
+  script:
+    - make coverhtml
+  only:
+  - master
+
+lint_code:
+  stage: test
+  script:
+    - make lint
+
+build:
+  stage: build
+  script:
+    - make
+
+include:
+  - local: '/ci-tools/.gitlab-ci.yml'
