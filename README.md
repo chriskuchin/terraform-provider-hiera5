@@ -77,6 +77,10 @@ The following output parameters are returned:
 
 All values are returned as strings because Terraform doesn't implement other types like int, float or bool. The values will be implicitly converted into the appropriate type depending on usage.
 
+## Example
+
+Take a look to [test-fixtures](./hiera5/test-fixtures)
+
 ## Develpment
 
 ### Requirements
