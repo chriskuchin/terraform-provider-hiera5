@@ -81,7 +81,10 @@ All values are returned as strings because Terraform doesn't implement other typ
 
 ## Example
 
-Take a look to [test-fixtures](./hiera5/test-fixtures)
+Take a look at [test-fixtures](./hiera5/test-fixtures)
+
+## Thanks to
+* Julien Andrieux for writting [Go tools and GitLab: How to do continuous integration like a boss](https://about.gitlab.com/blog/2017/11/27/go-tools-and-gitlab-how-to-do-continuous-integration-like-a-boss/), a really good starting point.
 
 ## Develpment
 
