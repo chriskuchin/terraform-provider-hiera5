@@ -19,10 +19,10 @@ clean: ## Remove previous build
 	@rm -f $(PROJECT_NAME)
 
 coverage: ## Generate global code coverage report
-	./scripts/coverage.sh;
+	TF_ACC=1 ./scripts/coverage.sh;
 
 coverhtml: ## Generate global code coverage report in HTML
-	./scripts/coverage.sh html;
+	TF_ACC=1 ./scripts/coverage.sh html;
 
 dep: ## Get the dependencies
         ifneq (,$(findstring "-mod=vendor",$(GOFLAGS)))
