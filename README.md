@@ -92,6 +92,10 @@ Take a look at [test-fixtures](./hiera5/test-fixtures)
 
 * [Go](https://golang.org/doc/install) 1.12
 
+### Notes
+
+[This repository is vendored as recomended on Terraform's docs](https://www.terraform.io/docs/extend/terraform-0.12-compatibility.html#upgrading-to-the-latest-terraform-sdk)
+
 ### Whishlist
 * [ ] Support overriding merge strategy in Data Sources
 * [ ] Support overriding scope variables in Data Sources
