@@ -1,5 +1,7 @@
 # Terraform Hiera 5 Provider
 
+[![pipeline status](https://gitlab.com/sbitio/terraform-provider-hiera5/badges/master/pipeline.svg)](https://gitlab.com/sbitio/terraform-provider-hiera5/-/commits/master) [![coverage report](https://gitlab.com/sbitio/terraform-provider-hiera5/badges/master/coverage.svg)](https://gitlab.com/sbitio/terraform-provider-hiera5/-/commits/master)
+
 This provider implements data sources that can be used to perform hierachical data lookups with Hiera.
 
 This is useful for providing configuration values in an environment with a high level of dimensionality or for making values from an existing Puppet deployment available in Terraform.
@@ -76,6 +78,10 @@ The following output parameters are returned:
 * `value` - the value
 
 All values are returned as strings because Terraform doesn't implement other types like int, float or bool. The values will be implicitly converted into the appropriate type depending on usage.
+
+## Example
+
+Take a look to [test-fixtures](./hiera5/test-fixtures)
 
 ## Develpment
 

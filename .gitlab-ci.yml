@@ -19,10 +19,10 @@ before_script:
   - mkdir -p /go/src/gitlab.com/$CI_PROJECT_NAMESPACE /go/src/_/builds
   - cp -r $CI_PROJECT_DIR /go/src/gitlab.com/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME
   - ln -s /go/src/gitlab.com/$CI_PROJECT_NAMESPACE /go/src/_/builds/$CI_PROJECT_NAMESPACE
-  - make dep
 
 variables:
   GO111MODULE: "on"
+  GOFLAGS: "-mod=vendor"
 
 unit_tests:
   stage: test

@@ -1,0 +1,17 @@
+---
+version: 5
+
+defaults:
+  datadir: hieradata
+  data_hash: yaml_data
+
+
+hierarchy:
+  - name: Service
+    path: service/%{service}.yaml
+  - name: Environment
+    path: environment/%{environment}.yaml
+  - name: Time Zone
+    path: tz/%{facts.timezone}.yaml
+  - name: Common
+    path: common.yaml
