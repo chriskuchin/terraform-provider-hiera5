@@ -56,6 +56,8 @@ github.com/aws/aws-sdk-go/private/protocol/query/queryutil
 github.com/bgentry/go-netrc/netrc
 # github.com/bgentry/speakeasy v0.1.0
 github.com/bgentry/speakeasy
+# github.com/bmatcuk/doublestar v1.2.2
+github.com/bmatcuk/doublestar
 # github.com/fatih/color v1.7.0
 github.com/fatih/color
 # github.com/golang/protobuf v1.3.2
@@ -148,6 +150,33 @@ github.com/hashicorp/terraform-svchost/auth
 github.com/hashicorp/yamux
 # github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
 github.com/jmespath/go-jmespath
+# github.com/konsorten/go-windows-terminal-sequences v1.0.1
+github.com/konsorten/go-windows-terminal-sequences
+# github.com/lyraproj/dgo v0.3.2
+github.com/lyraproj/dgo/vf
+github.com/lyraproj/dgo/dgo
+github.com/lyraproj/dgo/internal
+github.com/lyraproj/dgo/stringer
+github.com/lyraproj/dgo/streamer
+github.com/lyraproj/dgo/tf
+github.com/lyraproj/dgo/typ
+github.com/lyraproj/dgo/util
+github.com/lyraproj/dgo/parser
+github.com/lyraproj/dgo/loader
+github.com/lyraproj/dgo/streamer/pcore
+# github.com/lyraproj/dgoyaml v0.3.1
+github.com/lyraproj/dgoyaml/yaml
+# github.com/lyraproj/hiera v0.3.6
+github.com/lyraproj/hiera/api
+github.com/lyraproj/hiera/hiera
+github.com/lyraproj/hiera/provider
+github.com/lyraproj/hiera/explain
+github.com/lyraproj/hiera/session
+github.com/lyraproj/hiera/config
+github.com/lyraproj/hiera/merge
+github.com/lyraproj/hiera/internal
+# github.com/lyraproj/hierasdk v0.3.0
+github.com/lyraproj/hierasdk/hiera
 # github.com/mattn/go-colorable v0.1.1
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.5
@@ -173,9 +202,13 @@ github.com/posener/complete
 github.com/posener/complete/cmd/install
 github.com/posener/complete/cmd
 github.com/posener/complete/match
+# github.com/sirupsen/logrus v1.4.2
+github.com/sirupsen/logrus
 # github.com/spf13/afero v1.2.2
 github.com/spf13/afero
 github.com/spf13/afero/mem
+# github.com/spf13/cast v1.3.0
+github.com/spf13/cast
 # github.com/ulikunitz/xz v0.5.5
 github.com/ulikunitz/xz
 github.com/ulikunitz/xz/internal/xlog
@@ -237,7 +270,9 @@ golang.org/x/oauth2/internal
 golang.org/x/oauth2/google
 golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
-# golang.org/x/sys v0.0.0-20190804053845-51ab0e2deafa
+# golang.org/x/sys v0.0.0-20200117145432-59e60aa80a0c
+golang.org/x/sys/windows
+golang.org/x/sys/windows/registry
 golang.org/x/sys/unix
 # golang.org/x/text v0.3.2
 golang.org/x/text/unicode/norm
@@ -311,3 +346,5 @@ google.golang.org/grpc/credentials/internal
 google.golang.org/grpc/balancer/base
 google.golang.org/grpc/binarylog/grpc_binarylog_v1
 google.golang.org/grpc/internal/syscall
+# gopkg.in/yaml.v3 v3.0.0-20191120175047-4206685974f2
+gopkg.in/yaml.v3
