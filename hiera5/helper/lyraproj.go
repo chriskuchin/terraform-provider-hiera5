@@ -21,8 +21,6 @@ import (
 func Lookup(config string, strategy string, key string, valueType string, vars map[string]interface{}) ([]byte, error) {
 	var args []string
 	var out []byte
-	var explain []byte
-	var err error
 	var b bytes.Buffer
 
 	var cmdOpts hiera.CommandOptions
@@ -31,7 +29,7 @@ func Lookup(config string, strategy string, key string, valueType string, vars m
 	cfgOpts.Put(
 		provider.LookupKeyFunctions, []sdk.LookupKey{provider.ConfigLookupKey, provider.Environment})
 
-	dir, err := os.Getwd()
+	dir, _ := os.Getwd()
 	log.Printf("[DEBUG] PWD is %s", dir)
 	log.Printf("[DEBUG] Config file is %s", config)
 	if _, err := os.Stat(config); os.IsNotExist(err) {
@@ -62,24 +60,19 @@ func Lookup(config string, strategy string, key string, valueType string, vars m
 	hiera.DoWithParent(context.TODO(), provider.MuxLookupKey, cfgOpts, func(c api.Session) {
 		hiera.LookupAndRender(c, &cmdOpts, args, &b)
 	})
-	if out, err = ioutil.ReadAll(io.Reader(&b)); err != nil {
-		log.Printf("[DEBUG] ERROR %s", err.Error())
-		return out, err
-	}
+	out, _ = ioutil.ReadAll(io.Reader(&b))
 	log.Printf("[DEBUG] out is %s", string(out))
 
-	cmdOpts.RenderAs = "yaml"
-	cmdOpts.ExplainOptions = true
-	cmdOpts.ExplainData = true
-	hiera.DoWithParent(context.TODO(), provider.MuxLookupKey, cfgOpts, func(c api.Session) {
-		hiera.LookupAndRender(c, &cmdOpts, args, &b)
-	})
-
-	if explain, err = ioutil.ReadAll(io.Reader(&b)); err != nil {
-		log.Printf("[DEBUG] ERROR %s", err.Error())
-		return out, err
-	}
-	log.Printf("[DEBUG] explain is %s", string(explain))
+	/*
+		cmdOpts.RenderAs = "yaml"
+		cmdOpts.ExplainOptions = true
+		cmdOpts.ExplainData = true
+		hiera.DoWithParent(context.TODO(), provider.MuxLookupKey, cfgOpts, func(c api.Session) {
+			hiera.LookupAndRender(c, &cmdOpts, args, &b)
+		})
+		explain, _ = ioutil.ReadAll(io.Reader(&b))
+		log.Printf("[DEBUG] explain is %s", string(explain))
+	*/
 
 	return out, nil
 }

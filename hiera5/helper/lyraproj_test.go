@@ -26,4 +26,9 @@ func TestLookup(t *testing.T) {
 	if v != "false" {
 		t.Errorf("aws_cloudwatch_enable is %s; want %s", v, "true")
 	}
+
+	out2, err2 := Lookup("../doesnt_exists/hiera.yaml", "deep", "is_utc", "", map[string]interface{}{"service": "api", "environment": "live", "facts": "{timezone=>'CET'}"})
+	if err2 == nil {
+		t.Errorf("Error invalid config should not return: %s", out2)
+	}
 }

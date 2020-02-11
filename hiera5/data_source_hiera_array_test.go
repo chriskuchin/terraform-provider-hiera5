@@ -44,21 +44,21 @@ func testAccDataSourceHiera5ArrayCheck(key string) resource.TestCheckFunc {
 		}
 		if attr["value.0"] != "-Xms512m" {
 			return fmt.Errorf(
-				"value.tier is %s; want %s",
+				"value.0 is %s; want %s",
 				attr["value.0"],
 				"-Xms512m",
 			)
 		}
 		if attr["value.1"] != "-Xmx2g" {
 			return fmt.Errorf(
-				"value.tier is %s; want %s",
+				"value.1 is %s; want %s",
 				attr["value.1"],
 				"-Xmx2g",
 			)
 		}
 		if attr["value.2"] != "-Dspring.profiles.active=live" {
 			return fmt.Errorf(
-				"value.tier is %s; want %s",
+				"value.2 is %s; want %s",
 				attr["value.2"],
 				"-Dspring.profiles.active=live",
 			)
