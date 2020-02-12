@@ -48,6 +48,9 @@ code_coverage_report:
   stage: test
   script:
     - make coverhtml
+  artifacts:
+    paths:
+      - coverage.html
   only:
   - master
 
