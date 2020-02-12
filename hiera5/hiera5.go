@@ -25,7 +25,11 @@ func newHiera5(config string, scope map[string]interface{}, merge string) hiera5
 }
 
 func (h *hiera5) lookup(key string, valueType string) ([]byte, error) {
-	return helper.Lookup(h.Config, h.Merge, key, valueType, h.Scope)
+	out, err := helper.Lookup(h.Config, h.Merge, key, valueType, h.Scope)
+	if err == nil && string(out) == "" {
+		return out, fmt.Errorf("Key '%s' not found", key)
+	}
+	return out, err
 }
 
 func (h *hiera5) array(key string) ([]interface{}, error) {
@@ -37,10 +41,7 @@ func (h *hiera5) array(key string) ([]interface{}, error) {
 		return nil, err
 	}
 
-	err = json.Unmarshal(out, &f)
-	if err != nil {
-		return nil, err
-	}
+	_ = json.Unmarshal(out, &f)
 	if _, ok := f.([]interface{}); ok {
 		for _, v := range f.([]interface{}) {
 			e = append(e, cast.ToString(v))
@@ -62,10 +63,7 @@ func (h *hiera5) hash(key string) (map[string]interface{}, error) {
 		return nil, err
 	}
 
-	err = json.Unmarshal(out, &f)
-	if err != nil {
-		return nil, err
-	}
+	_ = json.Unmarshal(out, &f)
 
 	if _, ok := f.(map[string]interface{}); ok {
 		for k, v := range f.(map[string]interface{}) {
@@ -85,10 +83,7 @@ func (h *hiera5) value(key string) (string, error) {
 		return "", err
 	}
 
-	err = json.Unmarshal(out, &f)
-	if err != nil {
-		return "", err
-	}
+	_ = json.Unmarshal(out, &f)
 
 	return cast.ToString(f), nil
 }
