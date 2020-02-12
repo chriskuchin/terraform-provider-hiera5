@@ -18,6 +18,7 @@ import (
 )
 
 // Lookup is a wrapper for lyraproj's hiera/hiera.LookupAndRender
+// it returns either an empty string when key is not found or JSON encoded key's value
 func Lookup(config string, strategy string, key string, valueType string, vars map[string]interface{}) ([]byte, error) {
 	var args []string
 	var out []byte

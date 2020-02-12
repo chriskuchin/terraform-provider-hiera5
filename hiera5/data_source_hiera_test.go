@@ -28,7 +28,7 @@ func TestAccDataSourceHiera5_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccDataSourceHiera5Check(keyUnavailable),
 				),
-				ExpectError: regexp.MustCompile("unexpected end of JSON input"),
+				ExpectError: regexp.MustCompile("Key '" + keyUnavailable + "' not found"),
 			},
 		},
 	})
