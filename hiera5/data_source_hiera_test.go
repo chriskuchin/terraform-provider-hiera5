@@ -2,6 +2,7 @@ package hiera5
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
@@ -10,6 +11,7 @@ import (
 
 func TestAccDataSourceHiera5_Basic(t *testing.T) {
 	key := "aws_instance_size"
+	keyUnavailable := "doesnt_exists"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:  func() { testAccPreCheck(t) },
@@ -20,6 +22,13 @@ func TestAccDataSourceHiera5_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccDataSourceHiera5Check(key),
 				),
+			},
+			{
+				Config: testAccDataSourceHiera5Config(keyUnavailable),
+				Check: resource.ComposeTestCheckFunc(
+					testAccDataSourceHiera5Check(keyUnavailable),
+				),
+				ExpectError: regexp.MustCompile("unexpected end of JSON input"),
 			},
 		},
 	})
