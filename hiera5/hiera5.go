@@ -27,14 +27,17 @@ func newHiera5(config string, scope map[string]interface{}, merge string) hiera5
 func (h *hiera5) lookup(key string, valueType string) ([]byte, error) {
 	out, err := helper.Lookup(h.Config, h.Merge, key, valueType, h.Scope)
 	if err == nil && string(out) == "" {
-		return out, fmt.Errorf("Key '%s' not found", key)
+		return out, fmt.Errorf("key '%s' not found", key)
 	}
+
 	return out, err
 }
 
 func (h *hiera5) array(key string) ([]interface{}, error) {
-	var f interface{}
-	var e []interface{}
+	var (
+		f interface{}
+		e []interface{}
+	)
 
 	out, err := h.lookup(key, "Array")
 	if err != nil {
@@ -42,12 +45,13 @@ func (h *hiera5) array(key string) ([]interface{}, error) {
 	}
 
 	_ = json.Unmarshal(out, &f)
+
 	if _, ok := f.([]interface{}); ok {
 		for _, v := range f.([]interface{}) {
 			e = append(e, cast.ToString(v))
 		}
 	} else {
-		return nil, fmt.Errorf("Key '%s' does not return a valid array", key)
+		return nil, fmt.Errorf("key '%s' does not return a valid array", key)
 	}
 
 	return e, nil
@@ -70,8 +74,9 @@ func (h *hiera5) hash(key string) (map[string]interface{}, error) {
 			e[k] = cast.ToString(v)
 		}
 	} else {
-		return nil, fmt.Errorf("Key '%s' does not return a valid hash", key)
+		return nil, fmt.Errorf("key '%s' does not return a valid hash", key)
 	}
+
 	return e, nil
 }
 

@@ -11,7 +11,6 @@ import (
 
 func TestAccDataSourceHiera5Array_Basic(t *testing.T) {
 	key := "java_opts"
-	keyUnavailable := "doesnt_exists"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:  func() { testAccPreCheck(t) },
@@ -28,7 +27,7 @@ func TestAccDataSourceHiera5Array_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccDataSourceHiera5ArrayCheck(keyUnavailable),
 				),
-				ExpectError: regexp.MustCompile("Key '" + keyUnavailable + "' not found"),
+				ExpectError: regexp.MustCompile("key '" + keyUnavailable + "' not found"),
 			},
 		},
 	})
@@ -42,8 +41,8 @@ func testAccDataSourceHiera5ArrayCheck(key string) resource.TestCheckFunc {
 		if !ok {
 			return fmt.Errorf("root module has no resource called %s", name)
 		}
-		attr := rs.Primary.Attributes
 
+		attr := rs.Primary.Attributes
 		if attr["id"] != key {
 			return fmt.Errorf(
 				"id is %s; want %s",
@@ -51,6 +50,7 @@ func testAccDataSourceHiera5ArrayCheck(key string) resource.TestCheckFunc {
 				key,
 			)
 		}
+
 		if attr["value.0"] != "-Xms512m" {
 			return fmt.Errorf(
 				"value.0 is %s; want %s",
@@ -58,6 +58,7 @@ func testAccDataSourceHiera5ArrayCheck(key string) resource.TestCheckFunc {
 				"-Xms512m",
 			)
 		}
+
 		if attr["value.1"] != "-Xmx2g" {
 			return fmt.Errorf(
 				"value.1 is %s; want %s",
@@ -65,6 +66,7 @@ func testAccDataSourceHiera5ArrayCheck(key string) resource.TestCheckFunc {
 				"-Xmx2g",
 			)
 		}
+
 		if attr["value.2"] != "-Dspring.profiles.active=live" {
 			return fmt.Errorf(
 				"value.2 is %s; want %s",
@@ -72,6 +74,7 @@ func testAccDataSourceHiera5ArrayCheck(key string) resource.TestCheckFunc {
 				"-Dspring.profiles.active=live",
 			)
 		}
+
 		return nil
 	}
 }
