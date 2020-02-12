@@ -7,6 +7,8 @@ import (
 	"github.com/spf13/cast"
 )
 
+const keyUnavailable = "doesnt_exists"
+
 func TestHiera5Lookup(t *testing.T) {
 	var f interface{}
 
@@ -20,7 +22,6 @@ func TestHiera5Lookup(t *testing.T) {
 	err = json.Unmarshal(out, &f)
 	if err != nil {
 		t.Errorf("Error unmarshalling JSON: %s", err)
-
 	}
 
 	v := cast.ToString(f)
@@ -45,6 +46,7 @@ func TestHiera5Array(t *testing.T) {
 			"-Xms512m",
 		)
 	}
+
 	if v[1] != "-Xmx2g" {
 		t.Errorf(
 			"v[1] is %s; want %s",
@@ -52,6 +54,7 @@ func TestHiera5Array(t *testing.T) {
 			"-Xmx2g",
 		)
 	}
+
 	if v[2] != "-Dspring.profiles.active=live" {
 		t.Errorf(
 			"v[2] is %s; want %s",
@@ -60,7 +63,7 @@ func TestHiera5Array(t *testing.T) {
 		)
 	}
 
-	v2, err2 := hiera.array("doesnt_exists")
+	v2, err2 := hiera.array(keyUnavailable)
 	if err2 == nil || v2 != nil {
 		t.Errorf("Error running hiera.Array: %s", v2)
 	}
@@ -71,6 +74,7 @@ func TestHiera5Array(t *testing.T) {
 	}
 
 	hieraBad := testHiera5ConfigBad()
+
 	v4, err4 := hieraBad.array("java_opts")
 	if err4 == nil || v4 != nil {
 		t.Errorf("Error running hiera.Array: %s", v4)
@@ -93,7 +97,7 @@ func TestHiera5Hash(t *testing.T) {
 		t.Errorf("aws_tags.tier is %s; want %s", v, "1")
 	}
 
-	v2, err2 := hiera.hash("doesnt_exists")
+	v2, err2 := hiera.hash(keyUnavailable)
 	if err2 == nil || v2 != nil {
 		t.Errorf("Error running hiera.Hash: %s", v2)
 	}
@@ -104,6 +108,7 @@ func TestHiera5Hash(t *testing.T) {
 	}
 
 	hieraBad := testHiera5ConfigBad()
+
 	v4, err4 := hieraBad.hash("aws_tags")
 	if err4 == nil || v4 != nil {
 		t.Errorf("Error running hiera.Hash: %s", v4)
@@ -122,12 +127,13 @@ func TestHiera5Value(t *testing.T) {
 		t.Errorf("aws_cloudwatch_enable is %s; want %s", v, "true")
 	}
 
-	v2, err2 := hiera.value("doesnt_exists")
+	v2, err2 := hiera.value(keyUnavailable)
 	if err2 == nil || v2 != "" {
 		t.Errorf("Error running hiera.value: %s", v2)
 	}
 
 	hieraBad := testHiera5ConfigBad()
+
 	v4, err4 := hieraBad.value("aws_cloudwatch_enable")
 	if err4 == nil || v4 != "" {
 		t.Errorf("Error running hiera.value: %s", v4)

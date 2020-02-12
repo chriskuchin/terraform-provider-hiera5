@@ -30,8 +30,8 @@ func dataSourceHiera5ArrayRead(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[INFO] Reading hiera array")
 
 	keyName := d.Get("key").(string)
-
 	hiera := meta.(hiera5)
+
 	v, err := hiera.array(keyName)
 	if err != nil {
 		log.Printf("[DEBUG] Error reading hiera array %s", err)
@@ -39,7 +39,7 @@ func dataSourceHiera5ArrayRead(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	d.SetId(keyName)
-	d.Set("value", v)
+	_ = d.Set("value", v)
 
 	return nil
 }
