@@ -1,6 +1,6 @@
 # Terraform Hiera 5 Provider
 
-[![pipeline status](https://gitlab.com/sbitio/terraform-provider-hiera5/badges/master/pipeline.svg)](https://gitlab.com/sbitio/terraform-provider-hiera5/-/commits/master) [![coverage report](https://gitlab.com/sbitio/terraform-provider-hiera5/badges/master/coverage.svg)](https://gitlab.com/sbitio/terraform-provider-hiera5/-/commits/master)
+[![pipeline status](https://gitlab.com/sbitio/terraform-provider-hiera5/badges/master/pipeline.svg)](https://gitlab.com/sbitio/terraform-provider-hiera5/-/commits/master) [![coverage report](https://gitlab.com/sbitio/terraform-provider-hiera5/badges/master/coverage.svg)](https://gitlab.com/sbitio/terraform-provider-hiera5/-/commits/master) [![Go Report Card](https://goreportcard.com/badge/gitlab.com/sbitio/terraform-provider-hiera5)](https://goreportcard.com/report/sbitio/terraform-provider-hiera5)
 
 This provider implements data sources that can be used to perform hierachical data lookups with Hiera.
 
@@ -81,13 +81,20 @@ All values are returned as strings because Terraform doesn't implement other typ
 
 ## Example
 
-Take a look to [test-fixtures](./hiera5/test-fixtures)
+Take a look at [test-fixtures](./hiera5/test-fixtures)
+
+## Thanks to
+* Julien Andrieux for writting [Go tools and GitLab: How to do continuous integration like a boss](https://about.gitlab.com/blog/2017/11/27/go-tools-and-gitlab-how-to-do-continuous-integration-like-a-boss/), a really good starting point.
 
 ## Develpment
 
 ### Requirements
 
 * [Go](https://golang.org/doc/install) 1.12
+
+### Notes
+
+[This repository is vendored as recomended on Terraform's docs](https://www.terraform.io/docs/extend/terraform-0.12-compatibility.html#upgrading-to-the-latest-terraform-sdk)
 
 ### Whishlist
 * [ ] Support overriding merge strategy in Data Sources
