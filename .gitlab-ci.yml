@@ -51,6 +51,7 @@ code_coverage_report:
   artifacts:
     paths:
       - coverage.html
+    expose_as: coverage
   only:
   - master
 
