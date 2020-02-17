@@ -1,4 +1,4 @@
-## 0.2.0 (Unrelased)
+## 0.2.0 (2020-02-17)
 
 FEATURES:
 
@@ -8,7 +8,7 @@ BUG FIXES:
 
 * Ensure that `lookup` always returns a valid JSON or an error
 
-## 0.1.0 (February 11, 2020)
+## 0.1.0 (2020-02-11)
 
 FEATURES:
 
