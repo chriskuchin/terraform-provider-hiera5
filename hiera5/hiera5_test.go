@@ -140,6 +140,31 @@ func TestHiera5Value(t *testing.T) {
 	}
 }
 
+func TestHiera5Json(t *testing.T) {
+	hiera := testHiera5Config()
+
+	v, err := hiera.json("aws_tags")
+	if err != nil {
+		t.Errorf("Error running hiera.json: %s", err)
+	}
+
+	if v != `{"team":"A","tier":1}` {
+		t.Errorf("aws_tags is %s; want %s", v, `{"team":"A","tier":1}`)
+	}
+
+	v2, err2 := hiera.json(keyUnavailable)
+	if err2 == nil || v2 != "" {
+		t.Errorf("Error running hiera.json: %s", v2)
+	}
+
+	hieraBad := testHiera5ConfigBad()
+
+	v4, err4 := hieraBad.json("aws_cloudwatch_enable")
+	if err4 == nil || v4 != "" {
+		t.Errorf("Error running hiera.json: %s", v4)
+	}
+}
+
 func testHiera5Config() hiera5 {
 	return newHiera5(
 		"test-fixtures/hiera.yaml",

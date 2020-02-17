@@ -9,23 +9,23 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 )
 
-func TestAccDataSourceHiera5_Basic(t *testing.T) {
-	key := "aws_instance_size"
+func TestAccDataSourceHiera5Json_Basic(t *testing.T) {
+	key := "aws_tags"
 
 	resource.Test(t, resource.TestCase{
 		PreCheck:  func() { testAccPreCheck(t) },
 		Providers: testAccProviders,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataSourceHiera5Config(key),
+				Config: testAccDataSourceHiera5JsonConfig(key),
 				Check: resource.ComposeTestCheckFunc(
-					testAccDataSourceHiera5Check(key),
+					testAccDataSourceHiera5JsonCheck(key),
 				),
 			},
 			{
-				Config: testAccDataSourceHiera5Config(keyUnavailable),
+				Config: testAccDataSourceHiera5JsonConfig(keyUnavailable),
 				Check: resource.ComposeTestCheckFunc(
-					testAccDataSourceHiera5Check(keyUnavailable),
+					testAccDataSourceHiera5JsonCheck(keyUnavailable),
 				),
 				ExpectError: regexp.MustCompile("key '" + keyUnavailable + "' not found"),
 			},
@@ -33,9 +33,9 @@ func TestAccDataSourceHiera5_Basic(t *testing.T) {
 	})
 }
 
-func testAccDataSourceHiera5Check(key string) resource.TestCheckFunc {
+func testAccDataSourceHiera5JsonCheck(key string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
-		name := fmt.Sprintf("data.hiera5.%s", key)
+		name := fmt.Sprintf("data.hiera5_json.%s", key)
 
 		rs, ok := s.RootModule().Resources[name]
 		if !ok {
@@ -51,11 +51,11 @@ func testAccDataSourceHiera5Check(key string) resource.TestCheckFunc {
 			)
 		}
 
-		if attr["value"] != "t2.large" {
+		if attr["value"] != `{"team":"A","tier":1}` {
 			return fmt.Errorf(
 				"value is %s; want %s",
 				attr["value"],
-				"t2.large",
+				`{"team":"A","tier":1}`,
 			)
 		}
 
@@ -63,7 +63,7 @@ func testAccDataSourceHiera5Check(key string) resource.TestCheckFunc {
 	}
 }
 
-func testAccDataSourceHiera5Config(key string) string {
+func testAccDataSourceHiera5JsonConfig(key string) string {
 	return fmt.Sprintf(`
 		provider "hiera5" {
 			config = "test-fixtures/hiera.yaml"
@@ -74,7 +74,7 @@ func testAccDataSourceHiera5Config(key string) string {
 		        merge = "deep"
 		}
 		
-		data "hiera5" "%s" {
+		data "hiera5_json" "%s" {
 		  key = "%s"
 		}
 		`, key, key)

@@ -79,6 +79,20 @@ The following output parameters are returned:
 
 All values are returned as strings because Terraform doesn't implement other types like int, float or bool. The values will be implicitly converted into the appropriate type depending on usage.
 
+#### Json
+To retrieve anything JSON encoded:
+```hcl
+data "hiera5_json" "aws_tags" {
+    key = "aws_tags"
+}
+```
+The following output parameters are returned:
+* `id` - matches the key
+* `key` - the queried key
+* `value` - the returned value, JSON encoded
+
+As Terraform doesn't support nested maps or other more complex data structures this data source makes perfect fit dealing with complex values.
+
 ## Example
 
 Take a look at [test-fixtures](./hiera5/test-fixtures)
