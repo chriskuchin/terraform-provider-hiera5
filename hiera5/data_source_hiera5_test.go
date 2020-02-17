@@ -53,9 +53,9 @@ func testAccDataSourceHiera5Check(key string) resource.TestCheckFunc {
 
 		if attr["value"] != "t2.large" {
 			return fmt.Errorf(
-				"value.tier is %s; want %s",
+				"value is %s; want %s",
 				attr["value"],
-				"1",
+				"t2.large",
 			)
 		}
 
