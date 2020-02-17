@@ -1,4 +1,8 @@
-## 0.1.1 (Unrelased)
+## 0.2.0 (Unrelased)
+
+FEATURES:
+
+* Add `hiera5_json` data source
 
 BUG FIXES:
 

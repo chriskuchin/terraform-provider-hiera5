@@ -1,9 +1,11 @@
 package hiera5
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
-	//"log"
+	"io"
+	"io/ioutil"
 
 	"github.com/spf13/cast"
 
@@ -28,6 +30,10 @@ func (h *hiera5) lookup(key string, valueType string) ([]byte, error) {
 	out, err := helper.Lookup(h.Config, h.Merge, key, valueType, h.Scope)
 	if err == nil && string(out) == "" {
 		return out, fmt.Errorf("key '%s' not found", key)
+	}
+
+	if !json.Valid(out) {
+		return out, fmt.Errorf("key '%s''s lookup returned invalid JSON", key)
 	}
 
 	return out, err
@@ -91,4 +97,18 @@ func (h *hiera5) value(key string) (string, error) {
 	_ = json.Unmarshal(out, &f)
 
 	return cast.ToString(f), nil
+}
+
+func (h *hiera5) json(key string) (string, error) {
+	var b bytes.Buffer
+
+	out, err := h.lookup(key, "")
+	if err != nil {
+		return "", err
+	}
+
+	_ = json.Compact(&b, out)
+	out, _ = ioutil.ReadAll(io.Reader(&b))
+
+	return string(out), nil
 }
