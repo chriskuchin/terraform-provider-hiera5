@@ -35,7 +35,7 @@ type Dialect interface {
 	TimeTypeName() dgo.String
 
 	// ParseType parses the given type string and returns the resulting Type. The default parser will parse dgo syntax
-	ParseType(aliasMap dgo.AliasMap, typeString dgo.String) dgo.Type
+	ParseType(aliasMap dgo.AliasAdder, typeString dgo.String) dgo.Type
 }
 
 // DgoDialect returns the default dialect which is dgo
@@ -88,6 +88,6 @@ func (d dgoDialect) TimeTypeName() dgo.String {
 	return timeType
 }
 
-func (d dgoDialect) ParseType(aliasMap dgo.AliasMap, typeString dgo.String) dgo.Type {
+func (d dgoDialect) ParseType(aliasMap dgo.AliasAdder, typeString dgo.String) dgo.Type {
 	return typ.AsType(tf.ParseFile(aliasMap, ``, typeString.GoString()))
 }

@@ -98,7 +98,7 @@ func (l *mapLoader) init(im dgo.Map) {
 }
 
 func (l *mapLoader) initMap() dgo.Map {
-	m := vf.MapWithCapacity(5, nil)
+	m := vf.MapWithCapacity(5)
 	m.Put(`name`, l.name)
 	m.Put(`entries`, l.entries)
 	return m
@@ -310,7 +310,7 @@ func (l *childLoader) init(im dgo.Map) {
 }
 
 func (l *childLoader) initMap() dgo.Map {
-	m := vf.MapWithCapacity(2, nil)
+	m := vf.MapWithCapacity(2)
 	m.Put(`loader`, l.Loader)
 	m.Put(`parent`, l.parent)
 	return m

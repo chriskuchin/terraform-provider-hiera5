@@ -85,8 +85,8 @@ func badSyntax(t *Token, state int) error {
 type (
 	// Parser is the interface that a parser is required to implement
 	Parser interface {
-		// AliasMap returns the AliasMap used by this parser
-		AliasMap() dgo.AliasMap
+		// AliasAdder returns the AliasAdder used by this parser
+		AliasAdder() dgo.AliasAdder
 
 		// Append appends the given value to the value stack
 		Append(dgo.Value)
@@ -111,7 +111,7 @@ type (
 	// Parse method.
 	Base struct {
 		lf LexFunction
-		sc dgo.AliasMap
+		sc dgo.AliasAdder
 		d  []dgo.Value
 		sr *util.StringReader
 		pe *Token
@@ -124,23 +124,21 @@ type (
 )
 
 // NewParserBase creates the extendable parser base.
-func NewParserBase(am dgo.AliasMap, lf LexFunction, content string) Base {
-	if am == nil {
-		am = internal.NewAliasMap()
-	}
+func NewParserBase(am dgo.AliasAdder, lf LexFunction, content string) Base {
 	return Base{lf: lf, sc: am, sr: util.NewStringReader(content)}
 }
 
-// Parse calls ParseFile with an empty string as the fileName
-func Parse(content string) dgo.Value {
-	return ParseFile(nil, ``, content)
+// Parse calls ParseFile with an empty string as the fileName. Aliases are added to the Default alias map
+func Parse(content string) (result dgo.Value) {
+	internal.AddDefaultAliases(func(a dgo.AliasAdder) {
+		result = ParseFile(a, ``, content)
+	})
+	return
 }
 
-// ParseFile parses the given content into a dgo.Type. The filename is used in error messages.
-//
-// The alias map is optional. If given, the parser will recognize the type aliases provided in the map
-// and also add any new aliases declared within the parsed content to that map.
-func ParseFile(am dgo.AliasMap, fileName, content string) dgo.Value {
+// ParseFile parses the given content into a dgo.Type. Aliases are added to the given AliasAdder. The filename
+// is used in error messages.
+func ParseFile(am dgo.AliasAdder, fileName, content string) dgo.Value {
 	p := &parser{NewParserBase(am, nextToken, content)}
 	return DoParse(p, fileName)
 }
@@ -171,12 +169,15 @@ func DoParse(p Parser, fileName string) dgo.Value {
 		}
 	}()
 	p.Parse(p.NextToken())
-	tp := p.PopLast()
-	return p.AliasMap().Replace(tp)
+	v := p.PopLast()
+	if aa := p.AliasAdder(); aa != nil {
+		v = aa.Replace(v)
+	}
+	return v
 }
 
-// AliasMap returns the AliasMap used by this parser
-func (p *Base) AliasMap() dgo.AliasMap {
+// AliasAdder returns the AliasAdder used by this parser
+func (p *Base) AliasAdder() dgo.AliasAdder {
 	return p.sc
 }
 

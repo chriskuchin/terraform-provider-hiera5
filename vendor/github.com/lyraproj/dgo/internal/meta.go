@@ -54,7 +54,11 @@ func (t *metaType) Equals(v interface{}) bool {
 }
 
 func (t *metaType) HashCode() int {
-	return int(dgo.TiMeta)*1321 + t.tp.HashCode()
+	h := int(dgo.TiMeta) * 1321
+	if t.tp != nil {
+		h += t.tp.HashCode()
+	}
+	return h
 }
 
 func (t *metaType) Instance(v interface{}) bool {
@@ -106,7 +110,7 @@ func (t *metaType) ReflectType() reflect.Type {
 	return reflectTypeType
 }
 
-func (t *metaType) Resolve(ap dgo.AliasMap) {
+func (t *metaType) Resolve(ap dgo.AliasAdder) {
 	tp := t.tp
 	t.tp = DefaultAnyType
 	t.tp = ap.Replace(tp).(dgo.Type)

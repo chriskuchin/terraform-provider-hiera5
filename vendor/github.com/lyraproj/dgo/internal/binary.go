@@ -355,12 +355,11 @@ func (v *binary) Frozen() bool {
 }
 
 func (v *binary) FrozenCopy() dgo.Value {
-	if !v.frozen {
-		cs := make([]byte, len(v.bytes))
-		copy(cs, v.bytes)
-		return &binary{bytes: cs, frozen: true}
-	}
-	return v
+	return v.Copy(true)
+}
+
+func (v *binary) ThawedCopy() dgo.Value {
+	return v.Copy(false)
 }
 
 func (v *binary) GoBytes() []byte {

@@ -20,22 +20,288 @@ const (
 	typePrio
 )
 
+type typeToString func(typ dgo.Type, prio int)
+
+type typeBuilder struct {
+	io.Writer
+	complexTypes map[dgo.TypeIdentifier]typeToString
+	aliasMap     dgo.AliasMap
+	seen         []dgo.Value
+}
+
 // TypeString produces a string with the go-like syntax for the given type.
 func TypeString(typ dgo.Type) string {
-	bld := &strings.Builder{}
-	buildTypeString(nil, typ, 0, bld)
-	return bld.String()
+	return TypeStringWithAliasMap(typ, internal.DefaultAliases())
 }
 
-func joinTypes(seen []dgo.Value, v dgo.Iterable, s string, prio int, sb io.Writer) {
-	joinX(seen, v, typeAsType, s, prio, sb)
+// TypeStringWithAliasMap produces a string with the go-like syntax for the given type.
+func TypeStringWithAliasMap(typ dgo.Type, am dgo.AliasMap) string {
+	s := strings.Builder{}
+	newTypeBuilder(&s, am).buildTypeString(typ, 0)
+	return s.String()
 }
 
-func joinValueTypes(seen []dgo.Value, v dgo.Iterable, s string, prio int, sb io.Writer) {
-	joinX(seen, v, valueAsType, s, prio, sb)
+func (sb *typeBuilder) anyOf(typ dgo.Type, prio int) {
+	sb.writeTernary(typ, typeAsType, prio, `|`, orPrio)
 }
 
-func joinX(seen []dgo.Value, v dgo.Iterable, tc func(dgo.Value) dgo.Type, s string, prio int, sb io.Writer) {
+func (sb *typeBuilder) oneOf(typ dgo.Type, prio int) {
+	sb.writeTernary(typ, typeAsType, prio, `^`, xorPrio)
+}
+
+func (sb *typeBuilder) allOf(typ dgo.Type, prio int) {
+	sb.writeTernary(typ, typeAsType, prio, `&`, andPrio)
+}
+
+func (sb *typeBuilder) allOfValue(typ dgo.Type, prio int) {
+	sb.writeTernary(typ, valueAsType, prio, `&`, andPrio)
+}
+
+func (sb *typeBuilder) array(typ dgo.Type, _ int) {
+	at := typ.(dgo.ArrayType)
+	if at.Unbounded() {
+		util.WriteString(sb, `[]`)
+	} else {
+		util.WriteByte(sb, '[')
+		sb.writeSizeBoundaries(int64(at.Min()), int64(at.Max()))
+		util.WriteByte(sb, ']')
+	}
+	sb.buildTypeString(at.ElementType(), typePrio)
+}
+
+func (sb *typeBuilder) arrayExact(typ dgo.Type, _ int) {
+	util.WriteByte(sb, '{')
+	sb.joinValueTypes(typ.(dgo.ExactType).ExactValue().(dgo.Iterable), `,`, commaPrio)
+	util.WriteByte(sb, '}')
+}
+
+func (sb *typeBuilder) binary(typ dgo.Type, _ int) {
+	st := typ.(dgo.BinaryType)
+	util.WriteString(sb, `binary`)
+	if !st.Unbounded() {
+		util.WriteByte(sb, '[')
+		sb.writeSizeBoundaries(int64(st.Min()), int64(st.Max()))
+		util.WriteByte(sb, ']')
+	}
+}
+
+func (sb *typeBuilder) binaryExact(typ dgo.Type, _ int) {
+	util.WriteString(sb, `binary "`)
+	util.WriteString(sb, typ.(dgo.ExactType).ExactValue().(dgo.Binary).Encode())
+	util.WriteByte(sb, '"')
+}
+
+func (sb *typeBuilder) exactValue(typ dgo.Type, _ int) {
+	util.WriteString(sb, typ.(dgo.ExactType).ExactValue().String())
+}
+
+func (sb *typeBuilder) tuple(typ dgo.Type, _ int) {
+	sb.writeTupleArgs(typ.(dgo.TupleType), '{', '}')
+}
+
+func (sb *typeBuilder) _map(typ dgo.Type, _ int) {
+	at := typ.(dgo.MapType)
+	util.WriteString(sb, `map[`)
+	sb.buildTypeString(at.KeyType(), commaPrio)
+	if !at.Unbounded() {
+		util.WriteByte(sb, ',')
+		sb.writeSizeBoundaries(int64(at.Min()), int64(at.Max()))
+	}
+	util.WriteByte(sb, ']')
+	sb.buildTypeString(at.ValueType(), typePrio)
+}
+
+func (sb *typeBuilder) mapExact(typ dgo.Type, _ int) {
+	util.WriteByte(sb, '{')
+	sb.joinValueTypes(typ.(dgo.ExactType).ExactValue().(dgo.Map), `,`, commaPrio)
+	util.WriteByte(sb, '}')
+}
+
+func (sb *typeBuilder) _struct(typ dgo.Type, _ int) {
+	util.WriteByte(sb, '{')
+	st := typ.(dgo.StructMapType)
+	sb.joinStructMapEntries(st)
+	if st.Additional() {
+		if st.Len() > 0 {
+			util.WriteByte(sb, ',')
+		}
+		util.WriteString(sb, `...`)
+	}
+	util.WriteByte(sb, '}')
+}
+
+func (sb *typeBuilder) mapEntryExact(typ dgo.Type, _ int) {
+	me := typ.(dgo.ExactType).ExactValue().(dgo.MapEntry)
+	sb.buildTypeString(me.Key().Type(), commaPrio)
+	util.WriteByte(sb, ':')
+	sb.buildTypeString(me.Value().Type(), commaPrio)
+}
+
+func (sb *typeBuilder) floatRange(typ dgo.Type, _ int) {
+	st := typ.(dgo.FloatType)
+	sb.writeFloatRange(st.Min(), st.Max(), st.Inclusive())
+}
+
+func (sb *typeBuilder) integerRange(typ dgo.Type, _ int) {
+	st := typ.(dgo.IntegerType)
+	sb.writeIntRange(st.Min(), st.Max(), st.Inclusive())
+}
+
+func (sb *typeBuilder) regexpExact(typ dgo.Type, _ int) {
+	util.WriteString(sb, typ.TypeIdentifier().String())
+	util.WriteByte(sb, '[')
+	util.WriteString(sb, strconv.Quote(typ.(dgo.ExactType).ExactValue().String()))
+	util.WriteByte(sb, ']')
+}
+
+func (sb *typeBuilder) timeExact(typ dgo.Type, _ int) {
+	util.WriteString(sb, typ.TypeIdentifier().String())
+	util.WriteByte(sb, '[')
+	util.WriteString(sb, strconv.Quote(typ.(dgo.ExactType).ExactValue().String()))
+	util.WriteByte(sb, ']')
+}
+
+func (sb *typeBuilder) sensitive(typ dgo.Type, prio int) {
+	util.WriteString(sb, `sensitive`)
+	if op := typ.(dgo.UnaryType).Operand(); internal.DefaultAnyType != op {
+		util.WriteByte(sb, '[')
+		sb.buildTypeString(op, prio)
+		util.WriteByte(sb, ']')
+	}
+}
+
+func (sb *typeBuilder) stringExact(typ dgo.Type, _ int) {
+	util.WriteString(sb, strconv.Quote(typ.(dgo.ExactType).ExactValue().String()))
+}
+
+func (sb *typeBuilder) stringPattern(typ dgo.Type, _ int) {
+	internal.RegexpSlashQuote(sb, typ.(dgo.ExactType).ExactValue().String())
+}
+
+func (sb *typeBuilder) stringSized(typ dgo.Type, _ int) {
+	st := typ.(dgo.StringType)
+	util.WriteString(sb, `string`)
+	if !st.Unbounded() {
+		util.WriteByte(sb, '[')
+		sb.writeSizeBoundaries(int64(st.Min()), int64(st.Max()))
+		util.WriteByte(sb, ']')
+	}
+}
+
+func (sb *typeBuilder) ciString(typ dgo.Type, _ int) {
+	util.WriteByte(sb, '~')
+	util.WriteString(sb, strconv.Quote(typ.(dgo.ExactType).ExactValue().String()))
+}
+
+func (sb *typeBuilder) native(typ dgo.Type, _ int) {
+	rt := typ.(dgo.NativeType).GoType()
+	util.WriteString(sb, `native`)
+	if rt != nil {
+		util.WriteByte(sb, '[')
+		util.WriteString(sb, strconv.Quote(rt.String()))
+		util.WriteByte(sb, ']')
+	}
+}
+
+func (sb *typeBuilder) not(typ dgo.Type, _ int) {
+	nt := typ.(dgo.UnaryType)
+	util.WriteByte(sb, '!')
+	sb.buildTypeString(nt.Operand(), typePrio)
+}
+
+func (sb *typeBuilder) meta(typ dgo.Type, prio int) {
+	nt := typ.(dgo.UnaryType)
+	util.WriteString(sb, `type`)
+	if op := nt.Operand(); internal.DefaultAnyType != op {
+		if op == nil {
+			util.WriteString(sb, `[type]`)
+		} else {
+			util.WriteByte(sb, '[')
+			sb.buildTypeString(op, prio)
+			util.WriteByte(sb, ']')
+		}
+	}
+}
+
+func (sb *typeBuilder) function(typ dgo.Type, prio int) {
+	ft := typ.(dgo.FunctionType)
+	util.WriteString(sb, `func`)
+	sb.writeTupleArgs(ft.In(), '(', ')')
+	out := ft.Out()
+	if out.Len() > 0 {
+		util.WriteByte(sb, ' ')
+		if out.Len() == 1 && !out.Variadic() {
+			sb.buildTypeString(out.Element(0), prio)
+		} else {
+			sb.writeTupleArgs(ft.Out(), '(', ')')
+		}
+	}
+}
+
+func (sb *typeBuilder) errorExact(typ dgo.Type, _ int) {
+	util.WriteString(sb, `error[`)
+	util.WriteString(sb, strconv.Quote(typ.(dgo.ExactType).ExactValue().String()))
+	util.WriteByte(sb, ']')
+}
+
+func (sb *typeBuilder) named(typ dgo.Type, _ int) {
+	nt := typ.(dgo.NamedType)
+	util.WriteString(sb, nt.Name())
+	if params := nt.Parameters(); params != nil {
+		util.WriteByte(sb, '[')
+		sb.joinValueTypes(params, `,`, commaPrio)
+		util.WriteByte(sb, ']')
+	}
+}
+
+func newTypeBuilder(w io.Writer, am dgo.AliasMap) *typeBuilder {
+	sb := &typeBuilder{Writer: w, aliasMap: am}
+	sb.complexTypes = map[dgo.TypeIdentifier]typeToString{
+		dgo.TiAnyOf:         sb.anyOf,
+		dgo.TiOneOf:         sb.oneOf,
+		dgo.TiAllOf:         sb.allOf,
+		dgo.TiAllOfValue:    sb.allOfValue,
+		dgo.TiArray:         sb.array,
+		dgo.TiArrayExact:    sb.arrayExact,
+		dgo.TiBinary:        sb.binary,
+		dgo.TiBinaryExact:   sb.binaryExact,
+		dgo.TiBooleanExact:  sb.exactValue,
+		dgo.TiTuple:         sb.tuple,
+		dgo.TiMap:           sb._map,
+		dgo.TiMapExact:      sb.mapExact,
+		dgo.TiMapEntryExact: sb.mapEntryExact,
+		dgo.TiStruct:        sb._struct,
+		dgo.TiFloatExact:    sb.exactValue,
+		dgo.TiFloatRange:    sb.floatRange,
+		dgo.TiIntegerExact:  sb.exactValue,
+		dgo.TiIntegerRange:  sb.integerRange,
+		dgo.TiRegexpExact:   sb.regexpExact,
+		dgo.TiTimeExact:     sb.timeExact,
+		dgo.TiSensitive:     sb.sensitive,
+		dgo.TiStringExact:   sb.stringExact,
+		dgo.TiStringPattern: sb.stringPattern,
+		dgo.TiStringSized:   sb.stringSized,
+		dgo.TiCiString:      sb.ciString,
+		dgo.TiNative:        sb.native,
+		dgo.TiNot:           sb.not,
+		dgo.TiMeta:          sb.meta,
+		dgo.TiFunction:      sb.function,
+		dgo.TiErrorExact:    sb.errorExact,
+		dgo.TiNamed:         sb.named,
+		dgo.TiNamedExact:    sb.exactValue,
+	}
+	return sb
+}
+
+func (sb *typeBuilder) joinTypes(v dgo.Iterable, s string, prio int) {
+	sb.joinX(v, typeAsType, s, prio)
+}
+
+func (sb *typeBuilder) joinValueTypes(v dgo.Iterable, s string, prio int) {
+	sb.joinX(v, valueAsType, s, prio)
+}
+
+func (sb *typeBuilder) joinX(v dgo.Iterable, tc func(dgo.Value) dgo.Type, s string, prio int) {
 	first := true
 	v.Each(func(v dgo.Value) {
 		if first {
@@ -43,11 +309,11 @@ func joinX(seen []dgo.Value, v dgo.Iterable, tc func(dgo.Value) dgo.Type, s stri
 		} else {
 			util.WriteString(sb, s)
 		}
-		buildTypeString(seen, tc(v), prio, sb)
+		sb.buildTypeString(tc(v), prio)
 	})
 }
 
-func joinStructMapEntries(seen []dgo.Value, v dgo.StructMapType, sb io.Writer) {
+func (sb *typeBuilder) joinStructMapEntries(v dgo.StructMapType) {
 	first := true
 	v.Each(func(e dgo.StructMapEntry) {
 		if first {
@@ -55,16 +321,16 @@ func joinStructMapEntries(seen []dgo.Value, v dgo.StructMapType, sb io.Writer) {
 		} else {
 			util.WriteByte(sb, ',')
 		}
-		buildTypeString(seen, e.Key().(dgo.Type), commaPrio, sb)
+		sb.buildTypeString(e.Key().(dgo.Type), commaPrio)
 		if !e.Required() {
 			util.WriteByte(sb, '?')
 		}
 		util.WriteByte(sb, ':')
-		buildTypeString(seen, e.Value().(dgo.Type), commaPrio, sb)
+		sb.buildTypeString(e.Value().(dgo.Type), commaPrio)
 	})
 }
 
-func writeSizeBoundaries(min, max int64, sb io.Writer) {
+func (sb *typeBuilder) writeSizeBoundaries(min, max int64) {
 	util.WriteString(sb, strconv.FormatInt(min, 10))
 	if max != math.MaxInt64 {
 		util.WriteByte(sb, ',')
@@ -72,7 +338,7 @@ func writeSizeBoundaries(min, max int64, sb io.Writer) {
 	}
 }
 
-func writeIntRange(min, max int64, inclusive bool, sb io.Writer) {
+func (sb *typeBuilder) writeIntRange(min, max int64, inclusive bool) {
 	if min != math.MinInt64 {
 		util.WriteString(sb, strconv.FormatInt(min, 10))
 	}
@@ -86,7 +352,7 @@ func writeIntRange(min, max int64, inclusive bool, sb io.Writer) {
 	}
 }
 
-func writeFloatRange(min, max float64, inclusive bool, sb io.Writer) {
+func (sb *typeBuilder) writeFloatRange(min, max float64, inclusive bool) {
 	if min != -math.MaxFloat64 {
 		util.WriteString(sb, util.Ftoa(min))
 	}
@@ -100,7 +366,7 @@ func writeFloatRange(min, max float64, inclusive bool, sb io.Writer) {
 	}
 }
 
-func writeTupleArgs(seen []dgo.Value, tt dgo.TupleType, leftSep, rightSep byte, sb io.Writer) {
+func (sb *typeBuilder) writeTupleArgs(tt dgo.TupleType, leftSep, rightSep byte) {
 	es := tt.ElementTypes()
 	if tt.Variadic() {
 		n := es.Len() - 1
@@ -108,239 +374,47 @@ func writeTupleArgs(seen []dgo.Value, tt dgo.TupleType, leftSep, rightSep byte, 
 		for i := 0; i < n; i++ {
 			util.WriteByte(sb, sep)
 			sep = ','
-			buildTypeString(seen, es.Get(i).(dgo.Type), commaPrio, sb)
+			sb.buildTypeString(es.Get(i).(dgo.Type), commaPrio)
 		}
 		util.WriteByte(sb, sep)
 		util.WriteString(sb, `...`)
-		buildTypeString(seen, es.Get(n).(dgo.Type), commaPrio, sb)
+		sb.buildTypeString(es.Get(n).(dgo.Type), commaPrio)
 		util.WriteByte(sb, rightSep)
 	} else {
 		util.WriteByte(sb, leftSep)
-		joinTypes(seen, es, `,`, commaPrio, sb)
+		sb.joinTypes(es, `,`, commaPrio)
 		util.WriteByte(sb, rightSep)
 	}
 }
 
-func writeTernary(seen []dgo.Value, typ dgo.Type, tc func(dgo.Value) dgo.Type, prio int, op string, opPrio int, sb io.Writer) {
+func (sb *typeBuilder) writeTernary(typ dgo.Type, tc func(dgo.Value) dgo.Type, prio int, op string, opPrio int) {
 	if prio >= orPrio {
 		util.WriteByte(sb, '(')
 	}
-	joinX(seen, typ.(dgo.TernaryType).Operands(), tc, op, opPrio, sb)
+	sb.joinX(typ.(dgo.TernaryType).Operands(), tc, op, opPrio)
 	if prio >= orPrio {
 		util.WriteByte(sb, ')')
 	}
 }
 
-type typeToString func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer)
+func (sb *typeBuilder) buildTypeString(typ dgo.Type, prio int) {
+	if tn := sb.aliasMap.GetName(typ); tn != nil {
+		util.WriteString(sb, tn.GoString())
+		return
+	}
 
-var complexTypes map[dgo.TypeIdentifier]typeToString
-
-var ctm = map[dgo.TypeIdentifier]typeToString{
-	dgo.TiAnyOf: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		writeTernary(seen, typ, typeAsType, prio, `|`, orPrio, sb)
-	},
-	dgo.TiOneOf: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		writeTernary(seen, typ, typeAsType, prio, `^`, xorPrio, sb)
-	},
-	dgo.TiAllOf: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		writeTernary(seen, typ, typeAsType, prio, `&`, andPrio, sb)
-	},
-	dgo.TiAllOfValue: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		writeTernary(seen, typ, valueAsType, prio, `&`, andPrio, sb)
-	},
-	dgo.TiArrayExact: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		util.WriteByte(sb, '{')
-		joinValueTypes(seen, typ.(dgo.ExactType).ExactValue().(dgo.Iterable), `,`, commaPrio, sb)
-		util.WriteByte(sb, '}')
-	},
-	dgo.TiArray: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		at := typ.(dgo.ArrayType)
-		if at.Unbounded() {
-			util.WriteString(sb, `[]`)
-		} else {
-			util.WriteByte(sb, '[')
-			writeSizeBoundaries(int64(at.Min()), int64(at.Max()), sb)
-			util.WriteByte(sb, ']')
-		}
-		buildTypeString(seen, at.ElementType(), typePrio, sb)
-	},
-	dgo.TiBinary: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		st := typ.(dgo.BinaryType)
-		util.WriteString(sb, `binary`)
-		if !st.Unbounded() {
-			util.WriteByte(sb, '[')
-			writeSizeBoundaries(int64(st.Min()), int64(st.Max()), sb)
-			util.WriteByte(sb, ']')
-		}
-	},
-	dgo.TiBinaryExact: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		util.WriteString(sb, `binary "`)
-		util.WriteString(sb, typ.(dgo.ExactType).ExactValue().(dgo.Binary).Encode())
-		util.WriteByte(sb, '"')
-	},
-	dgo.TiBooleanExact: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		util.WriteString(sb, typ.(dgo.ExactType).ExactValue().String())
-	},
-	dgo.TiTuple: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		writeTupleArgs(seen, typ.(dgo.TupleType), '{', '}', sb)
-	},
-	dgo.TiMap: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		at := typ.(dgo.MapType)
-		util.WriteString(sb, `map[`)
-		buildTypeString(seen, at.KeyType(), commaPrio, sb)
-		if !at.Unbounded() {
-			util.WriteByte(sb, ',')
-			writeSizeBoundaries(int64(at.Min()), int64(at.Max()), sb)
-		}
-		util.WriteByte(sb, ']')
-		buildTypeString(seen, at.ValueType(), typePrio, sb)
-	},
-	dgo.TiMapExact: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		util.WriteByte(sb, '{')
-		joinValueTypes(seen, typ.(dgo.ExactType).ExactValue().(dgo.Map), `,`, commaPrio, sb)
-		util.WriteByte(sb, '}')
-	},
-	dgo.TiStruct: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		util.WriteByte(sb, '{')
-		st := typ.(dgo.StructMapType)
-		joinStructMapEntries(seen, st, sb)
-		if st.Additional() {
-			if st.Len() > 0 {
-				util.WriteByte(sb, ',')
-			}
-			util.WriteString(sb, `...`)
-		}
-		util.WriteByte(sb, '}')
-	},
-	dgo.TiMapEntryExact: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		me := typ.(dgo.ExactType).ExactValue().(dgo.MapEntry)
-		buildTypeString(seen, me.Key().Type(), commaPrio, sb)
-		util.WriteByte(sb, ':')
-		buildTypeString(seen, me.Value().Type(), commaPrio, sb)
-	},
-	dgo.TiFloatExact: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		util.WriteString(sb, util.Ftoa(typ.(dgo.ExactType).ExactValue().(dgo.Float).GoFloat()))
-	},
-	dgo.TiFloatRange: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		st := typ.(dgo.FloatType)
-		writeFloatRange(st.Min(), st.Max(), st.Inclusive(), sb)
-	},
-	dgo.TiIntegerExact: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		util.WriteString(sb, typ.(dgo.ExactType).ExactValue().String())
-	},
-	dgo.TiIntegerRange: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		st := typ.(dgo.IntegerType)
-		writeIntRange(st.Min(), st.Max(), st.Inclusive(), sb)
-	},
-	dgo.TiRegexpExact: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		util.WriteString(sb, typ.TypeIdentifier().String())
-		util.WriteByte(sb, '[')
-		util.WriteString(sb, strconv.Quote(typ.(dgo.ExactType).ExactValue().String()))
-		util.WriteByte(sb, ']')
-	},
-	dgo.TiTimeExact: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		util.WriteString(sb, typ.TypeIdentifier().String())
-		util.WriteByte(sb, '[')
-		util.WriteString(sb, strconv.Quote(typ.(dgo.ExactType).ExactValue().String()))
-		util.WriteByte(sb, ']')
-	},
-	dgo.TiSensitive: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		util.WriteString(sb, `sensitive`)
-		if op := typ.(dgo.UnaryType).Operand(); internal.DefaultAnyType != op {
-			util.WriteByte(sb, '[')
-			buildTypeString(seen, op, prio, sb)
-			util.WriteByte(sb, ']')
-		}
-	},
-	dgo.TiStringExact: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		util.WriteString(sb, strconv.Quote(typ.(dgo.ExactType).ExactValue().String()))
-	},
-	dgo.TiStringPattern: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		internal.RegexpSlashQuote(sb, typ.(dgo.ExactType).ExactValue().String())
-	},
-	dgo.TiStringSized: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		st := typ.(dgo.StringType)
-		util.WriteString(sb, `string`)
-		if !st.Unbounded() {
-			util.WriteByte(sb, '[')
-			writeSizeBoundaries(int64(st.Min()), int64(st.Max()), sb)
-			util.WriteByte(sb, ']')
-		}
-	},
-	dgo.TiCiString: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		util.WriteByte(sb, '~')
-		util.WriteString(sb, strconv.Quote(typ.(dgo.ExactType).ExactValue().String()))
-	},
-	dgo.TiNot: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		nt := typ.(dgo.UnaryType)
-		util.WriteByte(sb, '!')
-		buildTypeString(seen, nt.Operand(), typePrio, sb)
-	},
-	dgo.TiNative: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		rt := typ.(dgo.NativeType).GoType()
-		util.WriteString(sb, `native`)
-		if rt != nil {
-			util.WriteByte(sb, '[')
-			util.WriteString(sb, strconv.Quote(rt.String()))
-			util.WriteByte(sb, ']')
-		}
-	},
-	dgo.TiMeta: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		nt := typ.(dgo.UnaryType)
-		util.WriteString(sb, `type`)
-		if op := nt.Operand(); internal.DefaultAnyType != op {
-			if op == nil {
-				util.WriteString(sb, `[type]`)
-			} else {
-				util.WriteByte(sb, '[')
-				buildTypeString(seen, op, prio, sb)
-				util.WriteByte(sb, ']')
-			}
-		}
-	},
-	dgo.TiFunction: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		ft := typ.(dgo.FunctionType)
-		util.WriteString(sb, `func`)
-		writeTupleArgs(seen, ft.In(), '(', ')', sb)
-		out := ft.Out()
-		if out.Len() > 0 {
-			util.WriteByte(sb, ' ')
-			if out.Len() == 1 && !out.Variadic() {
-				buildTypeString(seen, out.Element(0), prio, sb)
-			} else {
-				writeTupleArgs(seen, ft.Out(), '(', ')', sb)
-			}
-		}
-	},
-	dgo.TiErrorExact: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		util.WriteString(sb, `error[`)
-		util.WriteString(sb, strconv.Quote(typ.(dgo.ExactType).ExactValue().String()))
-		util.WriteByte(sb, ']')
-	},
-	dgo.TiNamed: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		nt := typ.(dgo.NamedType)
-		util.WriteString(sb, nt.Name())
-		if params := nt.Parameters(); params != nil {
-			util.WriteByte(sb, '[')
-			joinValueTypes(seen, params, `,`, commaPrio, sb)
-			util.WriteByte(sb, ']')
-		}
-	},
-	dgo.TiNamedExact: func(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
-		util.WriteString(sb, typ.(dgo.ExactType).ExactValue().String())
-	},
-}
-
-func buildTypeString(seen []dgo.Value, typ dgo.Type, prio int, sb io.Writer) {
 	ti := typ.TypeIdentifier()
-	if f, ok := complexTypes[ti]; ok {
-		if util.RecursionHit(seen, typ) {
+	if f, ok := sb.complexTypes[ti]; ok {
+		if util.RecursionHit(sb.seen, typ) {
 			util.WriteString(sb, `<recursive self reference to `)
 			util.WriteString(sb, ti.String())
 			util.WriteString(sb, ` type>`)
 			return
 		}
-		f(append(seen, typ), typ, prio, sb)
+		os := sb.seen
+		sb.seen = append(sb.seen, typ)
+		f(typ, prio)
+		sb.seen = os
 	} else {
 		util.WriteString(sb, ti.String())
 	}
@@ -354,15 +428,10 @@ func valueAsType(v dgo.Value) dgo.Type {
 	return v.Type()
 }
 
-// The use of an init() function is motivated by two things.
-// 1. The complexTypes map introduces a circular dependency. It contains functions that in turn
-//    references the map. The init() function breaks that circularity since it's referenced from
-//    nowhere.
-// 2. The internal package must be able to call the TypeString function and the stringer package
-//    must use the internal package. The only way to break that dependency would be to merge the two
-//    packages. There's however no way to use the internal package without the stringer package
-//    being initialized first so the circularity between them is harmless.
+// The use of an init() function is motivated by the internal package's need to call the TypeString function
+// and the stringer package's need to use the internal package. The only way to break that dependency would be
+// to merge  the two packages. There's however no way to use the internal package without the stringer package
+// being initialized first so the circularity between them is harmless.
 func init() {
-	complexTypes = ctm
 	internal.TypeString = TypeString
 }

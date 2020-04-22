@@ -105,6 +105,10 @@ func (v *native) FrozenCopy() dgo.Value {
 	panic(fmt.Errorf(`native value cannot be frozen`))
 }
 
+func (v *native) ThawedCopy() dgo.Value {
+	panic(fmt.Errorf(`native value cannot be copied`))
+}
+
 func (v *native) HashCode() int {
 	rv := (*reflect.Value)(v)
 	switch rv.Kind() {

@@ -14,7 +14,6 @@ import (
 type (
 	array struct {
 		slice  []dgo.Value
-		typ    dgo.ArrayType
 		frozen bool
 	}
 
@@ -255,7 +254,7 @@ func (t *sizedArrayType) New(arg dgo.Value) dgo.Value {
 	return newArray(t, arg)
 }
 
-func (t *sizedArrayType) Resolve(ap dgo.AliasMap) {
+func (t *sizedArrayType) Resolve(ap dgo.AliasAdder) {
 	te := t.elementType
 	t.elementType = DefaultAnyType
 	t.elementType = ap.Replace(te).(dgo.Type)
@@ -329,7 +328,7 @@ func (t *exactArrayType) ReflectType() reflect.Type {
 	return reflect.SliceOf(t.ElementType().ReflectType())
 }
 
-func (t *exactArrayType) Resolve(ap dgo.AliasMap) {
+func (t *exactArrayType) Resolve(ap dgo.AliasAdder) {
 	t.value.Resolve(ap)
 }
 
@@ -637,7 +636,7 @@ func (t *tupleType) ReflectType() reflect.Type {
 	return reflect.SliceOf(t.ElementType().ReflectType())
 }
 
-func (t *tupleType) Resolve(ap dgo.AliasMap) {
+func (t *tupleType) Resolve(ap dgo.AliasAdder) {
 	s := t.types
 	t.types = nil
 	resolveSlice(s, ap)
@@ -755,37 +754,9 @@ func ArrayFromReflected(vr reflect.Value, frozen bool) dgo.Value {
 	return &array{slice: arr, frozen: frozen}
 }
 
-func asArrayType(typ interface{}) dgo.ArrayType {
-	if typ == nil {
-		return nil
-	}
-
-	parseArrayType := func(s string) dgo.ArrayType {
-		if t, ok := Parse(s).(dgo.ArrayType); ok {
-			return t
-		}
-		panic(fmt.Errorf("expression '%s' does not evaluate to an array type", s))
-	}
-
-	var mt dgo.ArrayType
-	switch typ := typ.(type) {
-	case dgo.ArrayType:
-		mt = typ
-	case string:
-		mt = parseArrayType(typ)
-	case dgo.String:
-		mt = parseArrayType(typ.GoString())
-	default:
-		mt = TypeFromReflected(reflect.TypeOf(typ)).(dgo.ArrayType)
-	}
-	return mt
-}
-
-// ArrayWithCapacity creates a new mutable array of the given type and initial capacity. The type can be nil, the
-// zero value of a go slice, a dgo.ArrayType, or a dgo string that parses to a dgo.ArrayType.
-func ArrayWithCapacity(capacity int, typ interface{}) dgo.Array {
-	mt := asArrayType(typ)
-	return &array{slice: make([]dgo.Value, 0, capacity), typ: mt, frozen: false}
+// ArrayWithCapacity creates a new mutable array of the given type and initial capacity.
+func ArrayWithCapacity(capacity int) dgo.Array {
+	return &array{slice: make([]dgo.Value, 0, capacity), frozen: false}
 }
 
 // WrapSlice wraps the given slice in an array. Unset entries in the slice will be replaced by Nil.
@@ -856,69 +827,17 @@ func Values(values []interface{}) dgo.Array {
 	return &array{slice: valueSlice(values, true), frozen: true}
 }
 
-func (v *array) assertType(e dgo.Value, pos int) {
-	if t := v.typ; t != nil {
-		sz := len(v.slice)
-		if pos >= sz {
-			sz++
-			if sz > t.Max() {
-				panic(IllegalSize(t, sz))
-			}
-		}
-		var et dgo.Type
-		if tp, ok := t.(dgo.TupleType); ok {
-			if tp.Variadic() {
-				lp := tp.Len() - 1
-				if pos < lp {
-					et = tp.Element(pos)
-				} else {
-					et = tp.Element(lp)
-				}
-			} else {
-				et = tp.Element(pos)
-			}
-		} else {
-			et = t.ElementType()
-		}
-		if !et.Instance(e) {
-			panic(IllegalAssignment(et, e))
-		}
-	}
-}
-
-func (v *array) assertTypes(values dgo.Iterable) {
-	if t := v.typ; t != nil {
-		addedSize := values.Len()
-		if addedSize == 0 {
-			return
-		}
-		sz := len(v.slice)
-		if sz+addedSize > t.Max() {
-			panic(IllegalSize(t, sz+addedSize))
-		}
-		et := t.ElementType()
-		values.Each(func(e dgo.Value) {
-			if !et.Instance(e) {
-				panic(IllegalAssignment(et, e))
-			}
-		})
-	}
-}
-
 func (v *array) Add(vi interface{}) {
 	if v.frozen {
 		panic(frozenArray(`Add`))
 	}
-	val := Value(vi)
-	v.assertType(val, len(v.slice))
-	v.slice = append(v.slice, val)
+	v.slice = append(v.slice, Value(vi))
 }
 
 func (v *array) AddAll(values dgo.Iterable) {
 	if v.frozen {
 		panic(frozenArray(`AddAll`))
 	}
-	v.assertTypes(values)
 	a := v.slice
 	if ar, ok := values.(*array); ok {
 		a = ar.AppendToSlice(a)
@@ -932,9 +851,7 @@ func (v *array) AddValues(values ...interface{}) {
 	if v.frozen {
 		panic(frozenArray(`AddValues`))
 	}
-	va := valueSlice(values, false)
-	v.assertTypes(&array{slice: va})
-	v.slice = append(v.slice, va...)
+	v.slice = append(v.slice, valueSlice(values, false)...)
 }
 
 func (v *array) All(predicate dgo.Predicate) bool {
@@ -1026,8 +943,14 @@ func (v *array) Copy(frozen bool) dgo.Array {
 				cp[i] = f.FrozenCopy()
 			}
 		}
+	} else {
+		for i := range cp {
+			if f, ok := cp[i].(dgo.Freezable); ok {
+				cp[i] = f.ThawedCopy()
+			}
+		}
 	}
-	return &array{slice: cp, typ: v.typ, frozen: frozen}
+	return &array{slice: cp, frozen: frozen}
 }
 
 func (v *array) ContainsAll(other dgo.Iterable) bool {
@@ -1153,6 +1076,10 @@ func (v *array) FrozenCopy() dgo.Value {
 	return v.Copy(true)
 }
 
+func (v *array) ThawedCopy() dgo.Value {
+	return v.Copy(false)
+}
+
 func (v *array) GoSlice() []dgo.Value {
 	if v.frozen {
 		return util.SliceCopy(v.slice)
@@ -1192,9 +1119,7 @@ func (v *array) Insert(pos int, vi interface{}) {
 	if v.frozen {
 		panic(frozenArray(`Insert`))
 	}
-	val := Value(vi)
-	v.assertType(val, pos)
-	v.slice = append(v.slice[:pos], append([]dgo.Value{val}, v.slice[pos:]...)...)
+	v.slice = append(v.slice[:pos], append([]dgo.Value{Value(vi)}, v.slice[pos:]...)...)
 }
 
 // InterfaceSlice returns the values held by the Array as a slice. The slice will
@@ -1210,31 +1135,6 @@ func (v *array) InterfaceSlice() []interface{} {
 
 func (v *array) Len() int {
 	return len(v.slice)
-}
-
-func (v *array) MapTo(t dgo.ArrayType, mapper dgo.Mapper) dgo.Array {
-	if t == nil {
-		return v.Map(mapper)
-	}
-	a := v.slice
-	l := len(a)
-	if l < t.Min() {
-		panic(IllegalSize(t, l))
-	}
-	if l > t.Max() {
-		panic(IllegalSize(t, l))
-	}
-	et := t.ElementType()
-	vs := make([]dgo.Value, len(a))
-
-	for i := range a {
-		mv := Value(mapper(a[i]))
-		if !et.Instance(mv) {
-			panic(IllegalAssignment(et, mv))
-		}
-		vs[i] = mv
-	}
-	return &array{slice: vs, typ: t, frozen: v.frozen}
 }
 
 func (v *array) Map(mapper dgo.Mapper) dgo.Array {
@@ -1302,11 +1202,6 @@ func (v *array) removePos(pos int) dgo.Value {
 	a := v.slice
 	if pos >= 0 && pos < len(a) {
 		newLen := len(a) - 1
-		if v.typ != nil {
-			if v.typ.Min() > newLen {
-				panic(IllegalSize(v.typ, newLen))
-			}
-		}
 		val := a[pos]
 		copy(a[pos:], a[pos+1:])
 		a[newLen] = nil // release to GC
@@ -1330,7 +1225,7 @@ func (v *array) RemoveValue(value interface{}) bool {
 	return v.removePos(v.IndexOf(value)) != nil
 }
 
-func (v *array) Resolve(ap dgo.AliasMap) {
+func (v *array) Resolve(ap dgo.AliasAdder) {
 	a := v.slice
 	for i := range a {
 		a[i] = ap.Replace(a[i])
@@ -1346,7 +1241,7 @@ func (v *array) Reject(predicate dgo.Predicate) dgo.Array {
 			vs = append(vs, e)
 		}
 	}
-	return &array{slice: vs, typ: v.typ, frozen: v.frozen}
+	return &array{slice: vs, frozen: v.frozen}
 }
 
 func (v *array) SameValues(other dgo.Iterable) bool {
@@ -1362,30 +1257,16 @@ func (v *array) Select(predicate dgo.Predicate) dgo.Array {
 			vs = append(vs, e)
 		}
 	}
-	return &array{slice: vs, typ: v.typ, frozen: v.frozen}
+	return &array{slice: vs, frozen: v.frozen}
 }
 
 func (v *array) Set(pos int, vi interface{}) dgo.Value {
 	if v.frozen {
 		panic(frozenArray(`Set`))
 	}
-	val := Value(vi)
-	v.assertType(val, pos)
 	old := v.slice[pos]
-	v.slice[pos] = val
+	v.slice[pos] = Value(vi)
 	return old
-}
-
-func (v *array) SetType(ti interface{}) {
-	if v.frozen {
-		panic(frozenArray(`SetType`))
-	}
-	mt := asArrayType(ti)
-	if mt == nil || mt.Instance(v) {
-		v.typ = mt
-		return
-	}
-	panic(IllegalAssignment(mt, v))
 }
 
 func (v *array) Slice(i, j int) dgo.Array {
@@ -1417,7 +1298,7 @@ func (v *array) Sort() dgo.Array {
 		}
 		return a.Type().TypeIdentifier() < b.Type().TypeIdentifier()
 	})
-	return &array{slice: sorted, typ: v.typ, frozen: v.frozen}
+	return &array{slice: sorted, frozen: v.frozen}
 }
 
 func (v *array) String() string {
@@ -1495,12 +1376,9 @@ func (v *array) ToMapFromEntries() (dgo.Map, bool) {
 }
 
 func (v *array) Type() dgo.Type {
-	if v.typ == nil {
-		ea := &exactArrayType{value: v}
-		ea.ExactType = ea
-		return ea
-	}
-	return v.typ
+	ea := &exactArrayType{value: v}
+	ea.ExactType = ea
+	return ea
 }
 
 func (v *array) Unique() dgo.Array {
@@ -1530,7 +1408,7 @@ nextVal:
 	if ui == top {
 		return v
 	}
-	return &array{slice: u[:ui], typ: v.typ, frozen: v.frozen}
+	return &array{slice: u[:ui], frozen: v.frozen}
 }
 
 func (v *array) Pop() (dgo.Value, bool) {
@@ -1545,9 +1423,7 @@ func (v *array) Pop() (dgo.Value, bool) {
 }
 
 func (v *array) With(vi interface{}) dgo.Array {
-	val := Value(vi)
-	v.assertType(val, len(v.slice))
-	return &array{slice: append(v.slice, val), typ: v.typ, frozen: v.frozen}
+	return &array{slice: append(v.slice, Value(vi)), frozen: v.frozen}
 }
 
 func (v *array) WithAll(values dgo.Iterable) dgo.Array {
@@ -1567,9 +1443,7 @@ func (v *array) WithValues(values ...interface{}) dgo.Array {
 	if len(values) == 0 {
 		return v
 	}
-	va := valueSlice(values, v.frozen)
-	v.assertTypes(&array{slice: va})
-	return &array{slice: append(v.slice, va...), typ: v.typ, frozen: v.frozen}
+	return &array{slice: append(v.slice, valueSlice(values, v.frozen)...), frozen: v.frozen}
 }
 
 // ReplaceNil performs an in-place replacement of nil interfaces with the NilValue
@@ -1598,7 +1472,7 @@ func frozenArray(f string) error {
 	return fmt.Errorf(`%s called on a frozen Array`, f)
 }
 
-func resolveSlice(ts []dgo.Value, ap dgo.AliasMap) {
+func resolveSlice(ts []dgo.Value, ap dgo.AliasAdder) {
 	for i := range ts {
 		ts[i] = ap.Replace(ts[i])
 	}

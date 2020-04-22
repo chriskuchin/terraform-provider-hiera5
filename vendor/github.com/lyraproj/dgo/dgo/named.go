@@ -36,7 +36,7 @@ type (
 		ValueString(value Value) string
 	}
 
-	// NamedType is implemented by types that are named and made available using an AliasMap
+	// NamedType is implemented by types that are named and made available using an AliasAdder
 	NamedType interface {
 		Type
 		NamedTypeExtension

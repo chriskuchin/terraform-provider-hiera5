@@ -1,7 +1,6 @@
 package internal
 
 import (
-	"errors"
 	"fmt"
 	"math"
 	"reflect"
@@ -12,7 +11,7 @@ import (
 	"github.com/lyraproj/dgo/dgo"
 )
 
-const initialCapacity = 1 << 4
+const initialCapacity = 1 << 3
 const maximumCapacity = 1 << 30
 const loadFactor = 0.75
 
@@ -54,7 +53,6 @@ type (
 	// hashMap is an unsorted Map that uses a hash table
 	hashMap struct {
 		table  []*hashNode
-		typ    dgo.MapType
 		len    int
 		first  *hashNode
 		last   *hashNode
@@ -133,12 +131,28 @@ func (v *mapEntry) FrozenCopy() dgo.Value {
 	return c
 }
 
+func (v *mapEntry) ThawedCopy() dgo.Value {
+	c := &mapEntry{key: v.key, value: v.value}
+	if f, ok := v.value.(dgo.Freezable); ok {
+		v.value = f.ThawedCopy()
+	}
+	return c
+}
+
 func (v *hashNode) FrozenCopy() dgo.Value {
 	if v.Frozen() {
 		return v
 	}
 	c := &hashNode{mapEntry: mapEntry{key: v.key, value: v.value}}
 	c.copyFreeze()
+	return c
+}
+
+func (v *hashNode) ThawedCopy() dgo.Value {
+	c := &hashNode{mapEntry: mapEntry{key: v.key, value: v.value}}
+	if f, ok := v.value.(dgo.Freezable); ok {
+		v.value = f.ThawedCopy()
+	}
 	return c
 }
 
@@ -163,6 +177,12 @@ func (v *mapEntry) Value() dgo.Value {
 func (v *mapEntry) copyFreeze() {
 	if f, ok := v.value.(dgo.Freezable); ok {
 		v.value = f.FrozenCopy()
+	}
+}
+
+func (v *mapEntry) copyThaw() {
+	if f, ok := v.value.(dgo.Freezable); ok {
+		v.value = f.ThawedCopy()
 	}
 }
 
@@ -216,7 +236,7 @@ func mapFromArgs(args []interface{}, frozen bool) dgo.Map {
 		if frozen {
 			return emptyMap
 		}
-		return MapWithCapacity(0, nil)
+		return MapWithCapacity(0)
 	case l == 1:
 		a0 := args[0]
 		if ar, ok := a0.(dgo.Array); ok && ar.Len()%2 == 0 {
@@ -300,11 +320,6 @@ func FromReflectedMap(rm reflect.Value, frozen bool) dgo.Value {
 		m.last = hn
 		tbl[hk] = hn
 	}
-	var typ dgo.MapType
-	if !frozen {
-		typ = TypeFromReflected(rm.Type()).(dgo.MapType)
-	}
-	m.typ = typ
 	return m
 }
 
@@ -314,34 +329,13 @@ func FromReflectedStruct(rv reflect.Value) dgo.Struct {
 	return &structVal{rs: rv, frozen: false}
 }
 
-// MapWithCapacity creates an empty dgo.Map suitable to hold a given number of entries. The map can be optionally
-// constrained by the given type which can be nil, the zero value of a go map, or a dgo.MapType
-func MapWithCapacity(capacity int, typ interface{}) dgo.Map {
+// MapWithCapacity creates an empty dgo.Map suitable to hold a given number of entries.
+func MapWithCapacity(capacity int) dgo.Map {
 	if capacity <= 0 {
 		capacity = initialCapacity
 	}
 	capacity = int(float64(capacity) / loadFactor)
-	return &hashMap{table: make([]*hashNode, tableSizeFor(capacity)), len: 0, typ: asMapType(typ), frozen: false}
-}
-
-func asMapType(ti interface{}) (mt dgo.MapType) {
-	ok := false
-	switch ti := ti.(type) {
-	case dgo.Type:
-		mt, ok = ti.(dgo.MapType)
-	case dgo.String:
-		mt, ok = Parse(ti.GoString()).(dgo.MapType)
-	case string:
-		mt, ok = Parse(ti).(dgo.MapType)
-	case nil:
-		ok = true
-	default:
-		mt, ok = TypeFromReflected(reflect.TypeOf(ti)).(dgo.MapType)
-	}
-	if !ok {
-		panic(errors.New(`Map.SetType: argument does not evaluate to a map type`))
-	}
-	return
+	return &hashMap{table: make([]*hashNode, tableSizeFor(capacity)), len: 0, frozen: false}
 }
 
 func (g *hashMap) All(predicate dgo.EntryPredicate) bool {
@@ -434,6 +428,10 @@ func (g *hashMap) Copy(frozen bool) dgo.Map {
 		for e := c.first; e != nil; e = e.next {
 			e.copyFreeze()
 		}
+	} else {
+		for e := c.first; e != nil; e = e.next {
+			e.copyThaw()
+		}
 	}
 	return c
 }
@@ -501,6 +499,10 @@ func (g *hashMap) Frozen() bool {
 
 func (g *hashMap) FrozenCopy() dgo.Value {
 	return g.Copy(true)
+}
+
+func (g *hashMap) ThawedCopy() dgo.Value {
+	return g.Copy(false)
 }
 
 func (g *hashMap) Get(key interface{}) dgo.Value {
@@ -587,7 +589,7 @@ func (g *hashMap) Merge(associations dgo.Map) dgo.Map {
 	if l == 0 {
 		return associations
 	}
-	c := &hashMap{len: l, typ: g.typ}
+	c := &hashMap{len: l}
 	g.resize(c, l+associations.Len())
 	c.PutAll(associations)
 	c.frozen = g.frozen
@@ -611,14 +613,12 @@ func (g *hashMap) Put(ki, vi interface{}) dgo.Value {
 	hk = (len(tbl) - 1) & hs
 	for e := tbl[hk]; e != nil; e = e.hashNext {
 		if k.Equals(e.key) {
-			g.assertType(k, v, 0)
 			old := e.value
 			e.value = v
 			return old
 		}
 	}
 
-	g.assertType(k, v, 1)
 	if float64(g.len+1) > float64(len(g.table))*loadFactor {
 		g.resize(g, 1)
 		tbl = g.table
@@ -658,12 +658,10 @@ func (g *hashMap) PutAll(associations dgo.Map) {
 		hk := (len(tbl) - 1) & hash(key.HashCode())
 		for e := tbl[hk]; e != nil; e = e.hashNext {
 			if key.Equals(e.key) {
-				g.assertType(key, val, 0)
 				e.value = val
 				return
 			}
 		}
-		g.assertType(key, val, 1)
 		nd := &hashNode{mapEntry: mapEntry{key: frozenCopy(key), value: val}, hashNext: tbl[hk], prev: g.last}
 		if g.first == nil {
 			g.first = nd
@@ -777,31 +775,10 @@ func (g *hashMap) RemoveAll(keys dgo.Array) {
 	})
 }
 
-func (g *hashMap) Resolve(ap dgo.AliasMap) {
-	needRehash := false
+func (g *hashMap) Resolve(ap dgo.AliasAdder) {
 	for e := g.first; e != nil; e = e.next {
-		if rk := ap.Replace(e.key); rk != e.key {
-			e.key = rk
-			needRehash = true
-		}
 		e.value = ap.Replace(e.value)
 	}
-
-	if needRehash {
-		g.resize(g, 0)
-	}
-}
-
-func (g *hashMap) SetType(ti interface{}) {
-	if g.frozen {
-		panic(frozenMap(`SetType`))
-	}
-	mt := asMapType(ti)
-	if mt == nil || mt.Instance(g) {
-		g.typ = mt
-		return
-	}
-	panic(IllegalAssignment(mt, g))
 }
 
 func (g *hashMap) String() string {
@@ -809,9 +786,6 @@ func (g *hashMap) String() string {
 }
 
 func (g *hashMap) StringKeys() bool {
-	if g.typ != nil {
-		return DefaultStringType.Assignable(g.typ.KeyType())
-	}
 	for e := g.first; e != nil; e = e.next {
 		if _, str := e.key.(*hstring); !str {
 			return false
@@ -825,12 +799,12 @@ func (g *hashMap) With(ki, vi interface{}) dgo.Map {
 	key := Value(ki)
 	val := Value(vi)
 	if g.table == nil {
-		c = &hashMap{table: make([]*hashNode, tableSizeFor(initialCapacity)), len: g.len, typ: g.typ}
+		c = &hashMap{table: make([]*hashNode, tableSizeFor(initialCapacity)), len: g.len}
 	} else {
 		if val.Equals(g.Get(key)) {
 			return g
 		}
-		c = &hashMap{len: g.len, typ: g.typ}
+		c = &hashMap{len: g.len}
 		g.resize(c, 1)
 	}
 	c.Put(key, val)
@@ -843,7 +817,7 @@ func (g *hashMap) Without(ki interface{}) dgo.Map {
 	if g.Get(key) == nil {
 		return g
 	}
-	c := &hashMap{typ: g.typ, len: g.len}
+	c := &hashMap{len: g.len}
 	g.resize(c, 0)
 	c.Remove(key)
 	c.frozen = g.frozen
@@ -854,7 +828,7 @@ func (g *hashMap) WithoutAll(keys dgo.Array) dgo.Map {
 	if g.len == 0 || keys.Len() == 0 {
 		return g
 	}
-	c := &hashMap{typ: g.typ, len: g.len}
+	c := &hashMap{len: g.len}
 	g.resize(c, 0)
 	c.RemoveAll(keys)
 	if g.len == c.len {
@@ -865,41 +839,13 @@ func (g *hashMap) WithoutAll(keys dgo.Array) dgo.Map {
 }
 
 func (g *hashMap) Type() dgo.Type {
-	if g.typ == nil {
-		et := &exactMapType{value: g}
-		et.ExactType = et
-		return et
-	}
-	return g.typ
+	et := &exactMapType{value: g}
+	et.ExactType = et
+	return et
 }
 
 func (g *hashMap) Values() dgo.Array {
 	return &array{slice: g.values(), frozen: g.frozen}
-}
-
-func (g *hashMap) assertType(k, v dgo.Value, addedSize int) {
-	if t := g.typ; t != nil {
-		if st, ok := t.(*structType); ok {
-			if err := st.CheckEntry(k, v); err != nil {
-				panic(err)
-			}
-		} else {
-			kt := t.KeyType()
-			if !kt.Instance(k) {
-				panic(IllegalAssignment(kt, k))
-			}
-			vt := t.ValueType()
-			if !vt.Instance(v) {
-				panic(IllegalAssignment(vt, v))
-			}
-		}
-		if addedSize > 0 {
-			sz := g.len + addedSize
-			if sz > t.Max() {
-				panic(IllegalSize(t, sz))
-			}
-		}
-	}
 }
 
 func (g *hashMap) values() []dgo.Value {
@@ -1163,7 +1109,7 @@ func (t *sizedMapType) ReflectType() reflect.Type {
 	return reflect.MapOf(t.KeyType().ReflectType(), t.ValueType().ReflectType())
 }
 
-func (t *sizedMapType) Resolve(ap dgo.AliasMap) {
+func (t *sizedMapType) Resolve(ap dgo.AliasAdder) {
 	kt := t.keyType
 	vt := t.valueType
 	t.keyType = DefaultAnyType
@@ -1269,9 +1215,14 @@ func (t *exactMapType) Each(actor func(dgo.StructMapEntry)) {
 }
 
 func (t *exactMapType) Generic() dgo.Type {
+	kt := Generic(t.KeyType())
+	vt := Generic(t.ValueType())
+	if kt == DefaultAnyType && vt == DefaultAnyType {
+		return DefaultMapType
+	}
 	return &sizedMapType{
-		keyType:   Generic(t.KeyType()),
-		valueType: Generic(t.ValueType()),
+		keyType:   kt,
+		valueType: vt,
 		min:       0,
 		max:       math.MaxInt64}
 }
@@ -1315,7 +1266,7 @@ func (t *exactMapType) ReflectType() reflect.Type {
 	return reflect.MapOf(t.KeyType().ReflectType(), t.ValueType().ReflectType())
 }
 
-func (t *exactMapType) Resolve(ap dgo.AliasMap) {
+func (t *exactMapType) Resolve(ap dgo.AliasAdder) {
 	if ac, ok := t.value.(dgo.AliasContainer); ok {
 		ac.Resolve(ap)
 	}

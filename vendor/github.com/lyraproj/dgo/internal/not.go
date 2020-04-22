@@ -87,7 +87,7 @@ func (t *notType) ReflectType() reflect.Type {
 	return reflectAnyType
 }
 
-func (t *notType) Resolve(ap dgo.AliasMap) {
+func (t *notType) Resolve(ap dgo.AliasAdder) {
 	tn := t.negated
 	t.negated = DefaultAnyType
 	t.negated = ap.Replace(tn).(dgo.Type)

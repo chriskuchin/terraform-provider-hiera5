@@ -58,7 +58,7 @@ func StructMapTypeUnresolved(additional bool, entries []dgo.StructMapEntry) dgo.
 
 func createExactMap(keys, values []dgo.Value) dgo.StructMapType {
 	l := len(keys)
-	m := MapWithCapacity(l, nil)
+	m := MapWithCapacity(l)
 	for i := 0; i < l; i++ {
 		m.Put(keys[i].(dgo.ExactType).ExactValue(), values[i].(dgo.ExactType).ExactValue())
 	}
@@ -159,24 +159,6 @@ func (t *structType) checkExactKeys() {
 
 func (t *structType) Additional() bool {
 	return t.additional
-}
-
-func (t *structType) CheckEntry(k, v dgo.Value) dgo.Value {
-	ks := t.keys.slice
-	for i := range ks {
-		kt := ks[i].(dgo.Type)
-		if kt.Instance(k) {
-			vt := t.values.slice[i].(dgo.Type)
-			if vt.Instance(v) {
-				return nil
-			}
-			return IllegalAssignment(vt, v)
-		}
-	}
-	if t.additional {
-		return nil
-	}
-	return IllegalMapKey(t, k)
 }
 
 func (t *structType) Assignable(other dgo.Type) bool {
@@ -342,7 +324,7 @@ func (t *structType) ReflectType() reflect.Type {
 	return reflect.MapOf(t.KeyType().ReflectType(), t.ValueType().ReflectType())
 }
 
-func (t *structType) Resolve(ap dgo.AliasMap) {
+func (t *structType) Resolve(ap dgo.AliasAdder) {
 	ks := t.keys.slice
 	vs := t.values.slice
 	t.keys.slice = []dgo.Value{}

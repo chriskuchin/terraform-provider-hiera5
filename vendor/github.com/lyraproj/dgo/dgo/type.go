@@ -131,10 +131,10 @@ type (
 	//
 	// The parser uses this interface to perform in-place replacement of aliases
 	AliasContainer interface {
-		Resolve(AliasMap)
+		Resolve(AliasAdder)
 	}
 
-	// Alias is a named reference of another type which can be resolved using an AliasMap
+	// Alias is a named reference of another type which can be resolved using an AliasAdder
 	Alias interface {
 		Type
 
@@ -142,21 +142,30 @@ type (
 		Reference() String
 	}
 
+	// An AliasAdder maintains mappings of names to types
+	AliasAdder interface {
+		// Add adds the type t with the given name to this map
+		Add(t Type, name String)
+
+		// GetType returns the type with the given name or nil if the type isn't found
+		GetType(n String) Type
+
+		// Replace replaces aliases with their concrete value.
+		Replace(Value) Value
+	}
+
 	// An AliasMap maps names to types and vice versa.
 	AliasMap interface {
+		// Collect is used to collect new aliases in a manner that is safe from a concurrency standpoint. If
+		// new aliases were added by the given function argument, it returns a new fully resolved AliasAdder,
+		// otherwise it returns itself.
+		Collect(func(AliasAdder)) AliasMap
+
 		// GetName returns the name for the given type or nil if the type isn't found
 		GetName(t Type) String
 
 		// GetType returns the type with the given name or nil if the type isn't found
 		GetType(n String) Type
-
-		// Add adds the type t with the given name to this map
-		Add(t Type, name String)
-
-		// Replace replaces aliases with their concrete value.
-		//
-		// The parser uses this interface to perform in-place replacement of aliases
-		Replace(Value) Value
 	}
 
 	// GenericType is implemented by types that represent themselves stripped from

@@ -365,14 +365,14 @@ func (t *patternType) Assignable(other dgo.Type) bool {
 	case *exactStringType:
 		return t.IsInstance(ot.value.s)
 	case *patternType:
-		return t.String() == ot.String()
+		return t.rxString() == ot.rxString()
 	}
 	return CheckAssignableTo(nil, other, t)
 }
 
 func (t *patternType) Equals(v interface{}) bool {
 	if ov, ok := v.(*patternType); ok {
-		return t.String() == ov.String()
+		return t.rxString() == ov.rxString()
 	}
 	return false
 }
@@ -382,7 +382,7 @@ func (t *patternType) Generic() dgo.Type {
 }
 
 func (t *patternType) HashCode() int {
-	return util.StringHash(t.String())
+	return util.StringHash(t.rxString())
 }
 
 func (t *patternType) Instance(v interface{}) bool {
@@ -413,6 +413,10 @@ func (t *patternType) New(arg dgo.Value) dgo.Value {
 
 func (t *patternType) ReflectType() reflect.Type {
 	return reflectStringType
+}
+
+func (t *patternType) rxString() string {
+	return (t.Regexp).String()
 }
 
 func (t *patternType) Type() dgo.Type {
