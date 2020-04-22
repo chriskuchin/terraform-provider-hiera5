@@ -33,7 +33,7 @@ func (h *hiera5) lookup(key string, valueType string) ([]byte, error) {
 	}
 
 	if !json.Valid(out) {
-		return out, fmt.Errorf("key '%s''s lookup returned invalid JSON", key)
+		return out, fmt.Errorf("key '%s''s lookup returned invalid JSON: '%s'", key, out)
 	}
 
 	return out, err
