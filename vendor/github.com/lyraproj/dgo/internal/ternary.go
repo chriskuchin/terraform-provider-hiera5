@@ -125,7 +125,7 @@ func (t *allOfType) ReflectType() reflect.Type {
 	return commonReflectTo(t.slice, typeAsType)
 }
 
-func (t *allOfType) Resolve(ap dgo.AliasMap) {
+func (t *allOfType) Resolve(ap dgo.AliasAdder) {
 	s := t.slice
 	t.slice = nil
 	resolveSlice(s, ap)
@@ -337,7 +337,7 @@ func (t *anyOfType) ReflectType() reflect.Type {
 	return commonReflectTo(t.slice, typeAsType)
 }
 
-func (t *anyOfType) Resolve(ap dgo.AliasMap) {
+func (t *anyOfType) Resolve(ap dgo.AliasAdder) {
 	s := t.slice
 	t.slice = nil
 	resolveSlice(s, ap)
@@ -460,7 +460,7 @@ func (t *oneOfType) ReflectType() reflect.Type {
 	return commonReflectTo(t.slice, typeAsType)
 }
 
-func (t *oneOfType) Resolve(ap dgo.AliasMap) {
+func (t *oneOfType) Resolve(ap dgo.AliasAdder) {
 	s := t.slice
 	t.slice = nil
 	resolveSlice(s, ap)

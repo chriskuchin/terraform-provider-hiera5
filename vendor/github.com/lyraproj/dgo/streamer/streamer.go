@@ -253,6 +253,13 @@ func (sc *context) emitBinary(value dgo.Binary) {
 
 func (sc *context) emitMap(value dgo.Map) {
 	if sc.consumer.CanDoComplexKeys() || value.StringKeys() {
+		if value.Len() == 1 {
+			if ref, ok := value.Get(sc.config.Dialect.RefKey()).(dgo.Integer); ok {
+				// Propagate refs verbatim
+				sc.consumer.AddRef(int(ref.GoInt()))
+				return
+			}
+		}
 		sc.process(value, func() {
 			sc.addMap(value.Len(), func() {
 				value.EachEntry(func(e dgo.MapEntry) {

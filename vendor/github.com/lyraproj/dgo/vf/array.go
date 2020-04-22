@@ -11,10 +11,9 @@ func Array(value interface{}) dgo.Array {
 	return internal.Array(value)
 }
 
-// ArrayWithCapacity creates a new mutable array of the given type and initial capacity. The type can be nil, the
-// zero value of a go slice, a dgo.ArrayType, or a dgo string that parses to a dgo.ArrayType.
-func ArrayWithCapacity(typ interface{}, capacity int) dgo.Array {
-	return internal.ArrayWithCapacity(capacity, typ)
+// ArrayWithCapacity creates a new mutable array of the given type and initial capacity.
+func ArrayWithCapacity(capacity int) dgo.Array {
+	return internal.ArrayWithCapacity(capacity)
 }
 
 // WrapSlice wraps the given slice in an array. Unset entries in the slice will be replaced by Nil.

@@ -2,6 +2,7 @@ package tf
 
 import (
 	"reflect"
+	"sync"
 
 	"github.com/lyraproj/dgo/dgo"
 	"github.com/lyraproj/dgo/internal"
@@ -30,13 +31,33 @@ func Parse(content string) dgo.Value {
 //
 // The alias map is optional. If given, the parser will recognize the type aliases provided in the map
 // and also add any new aliases declared within the parsed content to that map.
-func ParseFile(aliasMap dgo.AliasMap, fileName, content string) dgo.Value {
+func ParseFile(aliasMap dgo.AliasAdder, fileName, content string) dgo.Value {
 	return parser.ParseFile(aliasMap, fileName, content)
 }
 
-// NewAliasMap creates a new dgo.Alias map to be used as a scope when parsing types
-func NewAliasMap() dgo.AliasMap {
-	return internal.NewAliasMap()
+// AddDefaultAliases adds the new aliases to the default alias map by passing an AliasAdder to the function
+// The function is safe from a concurrency perspective.
+func AddDefaultAliases(adderFunc func(aliasAdder dgo.AliasAdder)) {
+	internal.AddDefaultAliases(adderFunc)
+}
+
+// AddAliases will call the given adder function, and if entries were added, lock the appointed Locker, create
+// a copy of the appointed AliasMap, add the entries to that copy, swap the appointed AliasMap for the copy,
+// and finally release the lock.
+//
+// No Locker is locked and no swap will take place if the adder function doesn't add anything.
+func AddAliases(mapToReplace *dgo.AliasMap, lock sync.Locker, adder func(adder dgo.AliasAdder)) {
+	internal.AddAliases(mapToReplace, lock, adder)
+}
+
+// BuiltInAliases returns the frozen built-in dgo.AliasMap
+func BuiltInAliases() dgo.AliasMap {
+	return internal.BuiltInAliases()
+}
+
+// DefaultAliases returns the default dgo.AliasMap
+func DefaultAliases() dgo.AliasMap {
+	return internal.DefaultAliases()
 }
 
 // Meta creates the meta type for the given type

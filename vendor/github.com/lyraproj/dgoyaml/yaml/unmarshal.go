@@ -99,7 +99,7 @@ func decodeArray(n *y3.Node) dgo.Array {
 func decodeMap(n *y3.Node) dgo.Map {
 	ms := n.Content
 	top := len(ms)
-	m := vf.MapWithCapacity(top/8*6, nil)
+	m := vf.MapWithCapacity(top)
 	for i := 0; i < top; i += 2 {
 		m.Put(decodeValue(ms[i]), decodeValue(ms[i+1]))
 	}

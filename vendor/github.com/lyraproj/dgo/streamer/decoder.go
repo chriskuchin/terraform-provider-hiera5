@@ -12,11 +12,11 @@ import (
 type dataDecoder struct {
 	BasicCollector
 	dialect  Dialect
-	aliasMap dgo.AliasMap
+	aliasMap dgo.AliasAdder
 }
 
-// DataDecoder returns a decoder capable of decoding a stream of rich data representations into the corresponding values
-func DataDecoder(aliasMap dgo.AliasMap, d Dialect) Collector {
+// DataDecoder returns a decoder capable of decoding a stream of rich data representations into the corresponding values.
+func DataDecoder(aliasMap dgo.AliasAdder, d Dialect) Collector {
 	c := &dataDecoder{aliasMap: aliasMap, dialect: d}
 	c.Init()
 	return c

@@ -32,7 +32,7 @@ func (c *BasicCollector) Init() {
 // AddArray initializes and adds a new array and then calls the function with is supposed to
 // add the elements.
 func (c *BasicCollector) AddArray(cap int, doer dgo.Doer) {
-	a := vf.ArrayWithCapacity(nil, cap)
+	a := vf.ArrayWithCapacity(cap)
 	c.Add(a)
 	top := len(c.Stack)
 	c.Stack = append(c.Stack, a)
@@ -43,9 +43,9 @@ func (c *BasicCollector) AddArray(cap int, doer dgo.Doer) {
 // AddMap initializes and adds a new map and then calls the function with is supposed to
 // add an even number of elements as a sequence of key, value, [key, value, ...]
 func (c *BasicCollector) AddMap(cap int, doer dgo.Doer) {
-	h := vf.MutableMap()
+	h := vf.MapWithCapacity(cap)
 	c.Add(h)
-	a := vf.ArrayWithCapacity(nil, cap*2)
+	a := vf.ArrayWithCapacity(cap * 2)
 	top := len(c.Stack)
 	c.Stack = append(c.Stack, a)
 	doer()

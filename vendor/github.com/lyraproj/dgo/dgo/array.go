@@ -25,6 +25,9 @@ type (
 		// FrozenCopy checks if the receiver is frozen. If it is, it returned. If not, a frozen copy
 		// of the receiver is returned.
 		FrozenCopy() Value
+
+		// ThawedCopy returns a thawed copy of the receiver.
+		ThawedCopy() Value
 	}
 
 	// Iterable enables the implementor to express how iteration is performed over contained elements
@@ -118,10 +121,6 @@ type (
 		// given mapper function.
 		Map(mapper Mapper) Array
 
-		// MapTo is like Map but with the added ability to constrain the created Array with a given
-		// ArrayType.
-		MapTo(t ArrayType, mapper Mapper) Array
-
 		// One returns true if the predicate returns true for exactly one value of this Array.
 		One(predicate Predicate) bool
 
@@ -159,10 +158,6 @@ type (
 		// Set replaces the given value at the given position and returns the old value for the position.
 		// The method panics if the receiver is frozen
 		Set(pos int, val interface{}) Value
-
-		// SetType sets the type for this Array to the given argument which must be an ArrayType or a string that evaluates
-		// to an ArrayType. The Array must be mutable and an instance of the given type
-		SetType(t interface{})
 
 		// Slice returns a slice of this array, starting at position start and ending at position end-1
 		Slice(start, end int) Array

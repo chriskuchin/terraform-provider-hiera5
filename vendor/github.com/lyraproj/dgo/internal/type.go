@@ -133,7 +133,7 @@ var Parse func(s string) dgo.Value
 //
 // The alias map is optional. If given, the parser will recognize the type aliases provided in the map
 // and also add any new aliases declared within the parsed content to that map.
-var ParseFile func(am dgo.AliasMap, fileName, content string) dgo.Value
+var ParseFile func(am dgo.AliasAdder, fileName, content string) dgo.Value
 
 // TypeString produces the string that represents the given type
 var TypeString func(dgo.Type) string

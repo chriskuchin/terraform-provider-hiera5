@@ -143,6 +143,13 @@ func (v *sensitive) FrozenCopy() dgo.Value {
 	return v
 }
 
+func (v *sensitive) ThawedCopy() dgo.Value {
+	if f, ok := v.value.(dgo.Freezable); ok {
+		return &sensitive{f.ThawedCopy()}
+	}
+	return v
+}
+
 func (v *sensitive) HashCode() int {
 	return deepHashCode(nil, v)
 }

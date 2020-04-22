@@ -61,9 +61,12 @@ func badSyntax(t *parser.Token, state int) error {
 	return fmt.Errorf(`expected %s, got %s`, expect(state), ts)
 }
 
-// Parse calls ParseFile with an empty string as the fileName
-func Parse(content string) dgo.Value {
-	return ParseFile(nil, ``, content)
+// Parse calls ParseFile with an empty string as the fileName. Aliases are added to the Default alias map
+func Parse(content string) (result dgo.Value) {
+	tf.AddDefaultAliases(func(a dgo.AliasAdder) {
+		result = ParseFile(a, ``, content)
+	})
+	return
 }
 
 // ParseType parses the given content into a dgo.Type.
@@ -72,10 +75,7 @@ func ParseType(content string) dgo.Type {
 }
 
 // ParseFile parses the given content into a dgo.Type. The filename is used in error messages.
-//
-// The alias map is optional. If given, the pcoreParser will recognize the type aliases provided in the map
-// and also add any new aliases declared within the parsed content to that map.
-func ParseFile(am dgo.AliasMap, fileName, content string) dgo.Value {
+func ParseFile(am dgo.AliasAdder, fileName, content string) dgo.Value {
 	p := &pcoreParser{parser.NewParserBase(am, nextToken, content)}
 	return parser.DoParse(p, fileName)
 }
@@ -188,7 +188,7 @@ func (p *pcoreParser) aliasDeclaration(t *parser.Token) dgo.Value {
 		n := toDgoName(t.Value)
 		if tf.Named(n) == nil {
 			s := vf.String(n)
-			am := p.AliasMap()
+			am := p.AliasAdder()
 			if am.GetType(s) == nil {
 				am.Add(parser.NewAlias(s), s)
 				p.element(p.NextToken())
@@ -712,7 +712,7 @@ func (p *pcoreParser) aliasReference(n string) dgo.Type {
 		return tp
 	}
 	vn := vf.String(n)
-	if tp := p.AliasMap().GetType(vn); tp != nil {
+	if tp := p.AliasAdder().GetType(vn); tp != nil {
 		return tp
 	}
 	return parser.NewAlias(vn)

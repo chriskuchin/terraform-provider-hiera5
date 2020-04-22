@@ -114,10 +114,6 @@ type (
 		// panic if the map is immutable.
 		RemoveAll(keys Array)
 
-		// SetType sets the type for this Map to the given argument which must be a MapType or a string that evaluates
-		// to a MapType. The Map must be mutable and an instance of the given type
-		SetType(t interface{})
-
 		// StringKeys returns true if this map's key type is assignable to String (i.e. if all keys are strings)
 		StringKeys() bool
 

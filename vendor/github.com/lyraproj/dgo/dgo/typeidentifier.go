@@ -145,6 +145,7 @@ const (
 )
 
 var tiLabels = map[TypeIdentifier]string{
+	TiAlias:         `alias`,
 	TiNil:           `nil`,
 	TiAny:           `any`,
 	TiMeta:          `type`,
