@@ -1,5 +1,11 @@
 ## 0.2.2 (Unrelased)
 
+## 0.2.2 (2020-04-24)
+
+BUG FIXES:
+
+* Leverage upstream bug fixes by updating dependencies
+
 ## 0.2.1 (2020-04-22)
 
 BUG FIXES:
