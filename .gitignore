@@ -81,9 +81,6 @@ tags
 
 ### Custom ###
 coverage/
-.*
 !.*gitignore
 !.*gitlab-ci.yaml
-!.github
-!.goreleaser.yml
 terraform-provider-hiera5
