@@ -1,4 +1,6 @@
-## 0.2.2 (Unrelased)
+## 0.2.3 (2020-12-08)
+
+Forked from https://gitlab.com/sbitio/terraform-provider-hiera5 in order to provide a published registry and since the maintainers seem unresponsive currently.
 
 ## 0.2.2 (2020-04-24)
 
