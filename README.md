@@ -25,7 +25,7 @@ provider "hiera5" {
   # Optional
   config = "~/hiera.yaml"
   # Optional
-  scope {
+  scope = {
     environment = "live"
     service     = "api"
     # Complex variables are supported using pdialect
