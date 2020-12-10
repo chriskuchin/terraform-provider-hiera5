@@ -29,6 +29,12 @@ func TestAccDataSourceHiera5Array_Basic(t *testing.T) {
 				),
 				ExpectError: regexp.MustCompile("key '" + keyUnavailable + "' not found"),
 			},
+			{
+				Config: testAccDataSourceHiera5ArrayConfig(key),
+				Check: resource.ComposeTestCheckFunc(
+					testAccDataSourceHiera5DefaultArrayCheck("default"),
+				),
+			},
 		},
 	})
 }
@@ -79,6 +85,46 @@ func testAccDataSourceHiera5ArrayCheck(key string) resource.TestCheckFunc {
 	}
 }
 
+func testAccDataSourceHiera5DefaultArrayCheck(key string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		name := fmt.Sprintf("data.hiera5_array.%s", key)
+
+		rs, ok := s.RootModule().Resources[name]
+		if !ok {
+			return fmt.Errorf("root module has no resource called %s", name)
+		}
+
+		fmt.Println(rs.Primary.Attributes)
+
+		attr := rs.Primary.Attributes
+		if attr["id"] != key {
+			return fmt.Errorf(
+				"id is %s; want %s",
+				attr["id"],
+				key,
+			)
+		}
+
+		if attr["value.0"] != "test1" {
+			return fmt.Errorf(
+				"value.0 is %s; want %s",
+				attr["value.0"],
+				"test1",
+			)
+		}
+
+		if attr["value.1"] != "test2" {
+			return fmt.Errorf(
+				"value.1 is %s; want %s",
+				attr["value.1"],
+				"test2",
+			)
+		}
+
+		return nil
+	}
+}
+
 func testAccDataSourceHiera5ArrayConfig(key string) string {
 	return fmt.Sprintf(`
 		provider "hiera5" {
@@ -89,9 +135,14 @@ func testAccDataSourceHiera5ArrayConfig(key string) string {
 			}
 		        merge = "deep"
 		}
-		
+
 		data "hiera5_array" "%s" {
 		  key = "%s"
+		}
+
+		data "hiera5_array" "default" {
+			key = "default"
+			default = ["test1", "test2"]
 		}
 		`, key, key)
 }
