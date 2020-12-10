@@ -29,6 +29,12 @@ func TestAccDataSourceHiera5Json_Basic(t *testing.T) {
 				),
 				ExpectError: regexp.MustCompile("key '" + keyUnavailable + "' not found"),
 			},
+			{
+				Config: testAccDataSourceHiera5JsonConfig(key),
+				Check: resource.ComposeTestCheckFunc(
+					testAccDataSourceHiera5DefaultJSONCheck("default"),
+				),
+			},
 		},
 	})
 }
@@ -63,6 +69,36 @@ func testAccDataSourceHiera5JsonCheck(key string) resource.TestCheckFunc {
 	}
 }
 
+func testAccDataSourceHiera5DefaultJSONCheck(key string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		name := fmt.Sprintf("data.hiera5_json.%s", key)
+
+		rs, ok := s.RootModule().Resources[name]
+		if !ok {
+			return fmt.Errorf("root module has no resource called %s", name)
+		}
+
+		attr := rs.Primary.Attributes
+		if attr["id"] != key {
+			return fmt.Errorf(
+				"id is %s; want %s",
+				attr["id"],
+				key,
+			)
+		}
+
+		if attr["value"] != `{"team":"B","tier":"10"}` {
+			return fmt.Errorf(
+				"value is %s; want %s",
+				attr["value"],
+				`{"team":"B","tier":"10"}`,
+			)
+		}
+
+		return nil
+	}
+}
+
 func testAccDataSourceHiera5JsonConfig(key string) string {
 	return fmt.Sprintf(`
 		provider "hiera5" {
@@ -73,9 +109,14 @@ func testAccDataSourceHiera5JsonConfig(key string) string {
 			}
 		        merge = "deep"
 		}
-		
+
 		data "hiera5_json" "%s" {
 		  key = "%s"
+		}
+
+		data "hiera5_json" "default" {
+			key = "default"
+			default = "{\"team\":\"B\",\"tier\":\"10\"}"
 		}
 		`, key, key)
 }

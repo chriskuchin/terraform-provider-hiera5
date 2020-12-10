@@ -83,4 +83,5 @@ tags
 coverage/
 !.*gitignore
 !.*gitlab-ci.yaml
+!.github/*
 terraform-provider-hiera5

@@ -29,6 +29,12 @@ func TestAccDataSourceHiera5Hash_Basic(t *testing.T) {
 				),
 				ExpectError: regexp.MustCompile("key '" + keyUnavailable + "' not found"),
 			},
+			{
+				Config: testAccDataSourceHiera5HashConfig(key),
+				Check: resource.ComposeTestCheckFunc(
+					testAccDataSourceHiera5DefaultHashCheck("default"),
+				),
+			},
 		},
 	})
 }
@@ -71,6 +77,44 @@ func testAccDataSourceHiera5HashCheck(key string) resource.TestCheckFunc {
 	}
 }
 
+func testAccDataSourceHiera5DefaultHashCheck(key string) resource.TestCheckFunc {
+	return func(s *terraform.State) error {
+		name := fmt.Sprintf("data.hiera5_hash.%s", key)
+
+		rs, ok := s.RootModule().Resources[name]
+		if !ok {
+			return fmt.Errorf("root module has no resource called %s", name)
+		}
+
+		attr := rs.Primary.Attributes
+		if attr["id"] != key {
+			return fmt.Errorf(
+				"id is %s; want %s",
+				attr["id"],
+				key,
+			)
+		}
+
+		if attr["value.tier"] != "10" {
+			return fmt.Errorf(
+				"value.tier is %s; want %s",
+				attr["value.tier"],
+				"10",
+			)
+		}
+
+		if attr["value.team"] != "B" {
+			return fmt.Errorf(
+				"value.team is %s; want %s",
+				attr["value.team"],
+				"B",
+			)
+		}
+
+		return nil
+	}
+}
+
 func testAccDataSourceHiera5HashConfig(key string) string {
 	return fmt.Sprintf(`
 		provider "hiera5" {
@@ -81,9 +125,17 @@ func testAccDataSourceHiera5HashConfig(key string) string {
 			}
 		        merge = "deep"
 		}
-		
+
 		data "hiera5_hash" "%s" {
 		  key = "%s"
+		}
+
+		data "hiera5_hash" "default" {
+			key = "default"
+			default = {
+				tier = "10"
+				"team" = "B"
+			}
 		}
 		`, key, key)
 }

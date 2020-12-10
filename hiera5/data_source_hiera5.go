@@ -19,6 +19,10 @@ func dataSourceHiera5() *schema.Resource {
 				Type:     schema.TypeString,
 				Computed: true,
 			},
+			"default": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 		},
 	}
 }
@@ -27,16 +31,21 @@ func dataSourceHiera5Read(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[INFO] Reading hiera value")
 
 	keyName := d.Get("key").(string)
+	defaultValue := d.Get("default").(string)
 	hiera := meta.(hiera5)
 
 	v, err := hiera.value(keyName)
-	if err != nil {
+	if err != nil && defaultValue == "" {
 		log.Printf("[DEBUG] Error reading hiera value %s", err)
 		return err
 	}
 
 	d.SetId(keyName)
-	_ = d.Set("value", v)
+	if err != nil {
+		d.Set("value", defaultValue)
+	} else {
+		d.Set("value", v)
+	}
 
 	return nil
 }
