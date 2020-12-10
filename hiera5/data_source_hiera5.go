@@ -38,13 +38,13 @@ func dataSourceHiera5Read(d *schema.ResourceData, meta interface{}) error {
 	if err != nil && defaultValue == "" {
 		log.Printf("[DEBUG] Error reading hiera value %s", err)
 		return err
+	}
+
+	d.SetId(keyName)
+	if err != nil {
+		d.Set("value", defaultValue)
 	} else {
-		d.SetId(keyName)
-		if err != nil {
-			d.Set("value", defaultValue)
-		} else {
-			d.Set("value", v)
-		}
+		d.Set("value", v)
 	}
 
 	return nil
