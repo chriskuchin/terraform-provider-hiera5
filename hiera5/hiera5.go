@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cast"
 
-	"gitlab.com/sbitio/terraform-provider-hiera5/hiera5/helper"
+	"github.com/chriskuchin/terraform-provider-hiera5/hiera5/helper"
 )
 
 type hiera5 struct {
