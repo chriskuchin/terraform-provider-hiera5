@@ -9,7 +9,13 @@ description: |-
 
 
 
+## Example Usage
 
+```terraform
+data "hiera5_array" "java_opts" {
+  key = "java_opts"
+}
+```
 
 ## Schema
 
