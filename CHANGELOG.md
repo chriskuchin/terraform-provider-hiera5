@@ -1,3 +1,7 @@
+## 0.2.4 (2020-12-11)
+
+- Added default option to allow a default value to specified.
+
 ## 0.2.3 (2020-12-08)
 
 Forked from https://gitlab.com/sbitio/terraform-provider-hiera5 in order to provide a published registry and since the maintainers seem unresponsive currently.
