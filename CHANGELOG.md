@@ -1,4 +1,4 @@
-## 0.2.5 (unreleased)
+## 0.2.5 (2020-12-17)
 
 - Added hiera5_bool data source
 
