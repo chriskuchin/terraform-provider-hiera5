@@ -5,3 +5,4 @@ aws_cloudwatch_enable: false
 aws_instance_size: t2.micro
 aws_tags: {}
 java_opts: []
+enable_spot_instances: false
