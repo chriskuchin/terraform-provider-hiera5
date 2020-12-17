@@ -5,3 +5,5 @@ aws_tags:
 java_opts:
   - '-Xms512m'
   - '-Xmx2g'
+
+enable_spot_instances: true

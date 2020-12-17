@@ -99,6 +99,19 @@ func (h *hiera5) value(key string) (string, error) {
 	return cast.ToString(f), nil
 }
 
+func (h hiera5) bool(key string) (bool, error) {
+	var f interface{}
+
+	out, err := h.lookup(key, "")
+	if err != nil {
+		return false, err
+	}
+
+	_ = json.Unmarshal(out, &f)
+
+	return cast.ToBool(f), nil
+}
+
 func (h *hiera5) json(key string) (string, error) {
 	var b bytes.Buffer
 

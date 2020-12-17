@@ -1,3 +1,7 @@
+## 0.2.5 (unreleased)
+
+- Added hiera5_bool data source
+
 ## 0.2.4 (2020-12-11)
 
 - Added default option to allow a default value to specified.

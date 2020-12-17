@@ -31,6 +31,7 @@ func Provider() terraform.ResourceProvider {
 			"hiera5_array": dataSourceHiera5Array(),
 			"hiera5_hash":  dataSourceHiera5Hash(),
 			"hiera5_json":  dataSourceHiera5Json(),
+			"hiera5_bool":  dataSourceHiera5Bool(),
 		},
 
 		ConfigureFunc: providerConfigure,
