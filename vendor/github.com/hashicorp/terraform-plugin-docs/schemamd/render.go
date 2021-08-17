@@ -25,22 +25,18 @@ func Render(schema *tfjson.Schema, w io.Writer) error {
 }
 
 type groupFilter struct {
-	title string
+	topLevelTitle string
+	nestedTitle   string
+
 	// only one of these will be passed depending on the type of child
 	filter func(block *tfjson.SchemaBlockType, att *tfjson.SchemaAttribute) bool
 }
 
 var (
-	rootGroupFilters = []groupFilter{
-		{"### Required", childIsRequired},
-		{"### Optional", childIsOptional},
-		{"### Read-only", childIsReadOnly},
-	}
-
-	nestedGroupFilters = []groupFilter{
-		{"Required:", childIsRequired},
-		{"Optional:", childIsOptional},
-		{"Read-only:", childIsReadOnly},
+	groupFilters = []groupFilter{
+		{"### Required", "Required:", childIsRequired},
+		{"### Optional", "Optional:", childIsOptional},
+		{"### Read-Only", "Read-Only:", childIsReadOnly},
 	}
 )
 
@@ -48,10 +44,12 @@ type nestedType struct {
 	anchorID string
 	path     []string
 	block    *tfjson.SchemaBlock
-	att      *cty.Type
+	object   *cty.Type
+
+	group groupFilter
 }
 
-func writeAttribute(w io.Writer, path []string, att *tfjson.SchemaAttribute) ([]nestedType, error) {
+func writeAttribute(w io.Writer, path []string, att *tfjson.SchemaAttribute, group groupFilter) ([]nestedType, error) {
 	name := path[len(path)-1]
 
 	_, err := io.WriteString(w, "- **"+name+"** ")
@@ -63,7 +61,7 @@ func writeAttribute(w io.Writer, path []string, att *tfjson.SchemaAttribute) ([]
 		att.Description = "The ID of this resource."
 	}
 
-	err = WriteAttributeDescription(w, att)
+	err = WriteAttributeDescription(w, att, false)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +81,9 @@ func writeAttribute(w io.Writer, path []string, att *tfjson.SchemaAttribute) ([]
 		nestedTypes = append(nestedTypes, nestedType{
 			anchorID: anchorID,
 			path:     path,
-			att:      &att.AttributeType,
+			object:   &att.AttributeType,
+
+			group: group,
 		})
 	case att.AttributeType.IsCollectionType() && att.AttributeType.ElementType().IsObjectType():
 		_, err = io.WriteString(w, " (see [below for nested schema](#"+anchorID+"))")
@@ -95,7 +95,9 @@ func writeAttribute(w io.Writer, path []string, att *tfjson.SchemaAttribute) ([]
 		nestedTypes = append(nestedTypes, nestedType{
 			anchorID: anchorID,
 			path:     path,
-			att:      &nt,
+			object:   &nt,
+
+			group: group,
 		})
 	}
 
@@ -141,10 +143,10 @@ func writeBlockType(w io.Writer, path []string, block *tfjson.SchemaBlockType) (
 }
 
 func writeRootBlock(w io.Writer, block *tfjson.SchemaBlock) error {
-	return writeBlockChildren(w, nil, block, rootGroupFilters)
+	return writeBlockChildren(w, nil, block, true)
 }
 
-func writeBlockChildren(w io.Writer, parents []string, block *tfjson.SchemaBlock, groupFilters []groupFilter) error {
+func writeBlockChildren(w io.Writer, parents []string, block *tfjson.SchemaBlock, root bool) error {
 	names := []string{}
 	for n := range block.Attributes {
 		names = append(names, n)
@@ -164,7 +166,9 @@ func writeBlockChildren(w io.Writer, parents []string, block *tfjson.SchemaBlock
 				goto NextName
 			}
 		}
-		return fmt.Errorf("no match for %q", n)
+		return fmt.Errorf("no match for %q, this can happen if you have incompatible schema defined, for example an "+
+			"optional block where all the child attributes are computed, in which case the block itself should also "+
+			"be marked computed", n)
 	NextName:
 	}
 
@@ -177,7 +181,12 @@ func writeBlockChildren(w io.Writer, parents []string, block *tfjson.SchemaBlock
 		}
 		sort.Strings(sortedNames)
 
-		_, err := io.WriteString(w, gf.title+"\n\n")
+		groupTitle := gf.topLevelTitle
+		if !root {
+			groupTitle = gf.nestedTitle
+		}
+
+		_, err := io.WriteString(w, groupTitle+"\n\n")
 		if err != nil {
 			return err
 		}
@@ -196,7 +205,7 @@ func writeBlockChildren(w io.Writer, parents []string, block *tfjson.SchemaBlock
 			}
 
 			if att, ok := block.Attributes[name]; ok {
-				nt, err := writeAttribute(w, path, att)
+				nt, err := writeAttribute(w, path, att, gf)
 				if err != nil {
 					return fmt.Errorf("unable to render attribute %q: %w", name, err)
 				}
@@ -236,17 +245,17 @@ func writeNestedTypes(w io.Writer, nestedTypes []nestedType) error {
 
 		switch {
 		case nt.block != nil:
-			err = writeBlockChildren(w, nt.path, nt.block, nestedGroupFilters)
+			err = writeBlockChildren(w, nt.path, nt.block, false)
 			if err != nil {
 				return err
 			}
-		case nt.att != nil:
-			err = writeObjectChildren(w, nt.path, *nt.att)
+		case nt.object != nil:
+			err = writeObjectChildren(w, nt.path, *nt.object, nt.group)
 			if err != nil {
 				return err
 			}
 		default:
-			return fmt.Errorf("missing information on nested block: %v", nt.path)
+			return fmt.Errorf("missing information on nested block: %s", strings.Join(nt.path, "."))
 		}
 
 		_, err = io.WriteString(w, "\n")
@@ -258,7 +267,7 @@ func writeNestedTypes(w io.Writer, nestedTypes []nestedType) error {
 	return nil
 }
 
-func writeObjectAttribute(w io.Writer, path []string, att cty.Type) ([]nestedType, error) {
+func writeObjectAttribute(w io.Writer, path []string, att cty.Type, group groupFilter) ([]nestedType, error) {
 	name := path[len(path)-1]
 
 	_, err := io.WriteString(w, "- **"+name+"** (")
@@ -292,7 +301,9 @@ func writeObjectAttribute(w io.Writer, path []string, att cty.Type) ([]nestedTyp
 		nestedTypes = append(nestedTypes, nestedType{
 			anchorID: anchorID,
 			path:     path,
-			att:      &att,
+			object:   &att,
+
+			group: group,
 		})
 	case att.IsCollectionType() && att.ElementType().IsObjectType():
 		_, err = io.WriteString(w, " (see [below for nested schema](#"+anchorID+"))")
@@ -304,7 +315,9 @@ func writeObjectAttribute(w io.Writer, path []string, att cty.Type) ([]nestedTyp
 		nestedTypes = append(nestedTypes, nestedType{
 			anchorID: anchorID,
 			path:     path,
-			att:      &nt,
+			object:   &nt,
+
+			group: group,
 		})
 	}
 
@@ -316,7 +329,12 @@ func writeObjectAttribute(w io.Writer, path []string, att cty.Type) ([]nestedTyp
 	return nestedTypes, nil
 }
 
-func writeObjectChildren(w io.Writer, parents []string, ty cty.Type) error {
+func writeObjectChildren(w io.Writer, parents []string, ty cty.Type, group groupFilter) error {
+	_, err := io.WriteString(w, group.nestedTitle+"\n\n")
+	if err != nil {
+		return err
+	}
+
 	atts := ty.AttributeTypes()
 	sortedNames := []string{}
 	for n := range atts {
@@ -329,7 +347,7 @@ func writeObjectChildren(w io.Writer, parents []string, ty cty.Type) error {
 		att := atts[name]
 		path := append(parents, name)
 
-		nt, err := writeObjectAttribute(w, path, att)
+		nt, err := writeObjectAttribute(w, path, att, group)
 		if err != nil {
 			return fmt.Errorf("unable to render attribute %q: %w", name, err)
 		}
@@ -337,7 +355,7 @@ func writeObjectChildren(w io.Writer, parents []string, ty cty.Type) error {
 		nestedTypes = append(nestedTypes, nt...)
 	}
 
-	_, err := io.WriteString(w, "\n")
+	_, err = io.WriteString(w, "\n")
 	if err != nil {
 		return err
 	}
