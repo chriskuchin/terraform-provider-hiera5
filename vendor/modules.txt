@@ -253,7 +253,7 @@ github.com/lyraproj/dgo/util
 github.com/lyraproj/dgo/vf
 # github.com/lyraproj/dgoyaml v0.4.4
 github.com/lyraproj/dgoyaml/yaml
-# github.com/lyraproj/hiera v0.4.5
+# github.com/lyraproj/hiera v0.4.6
 ## explicit
 github.com/lyraproj/hiera/api
 github.com/lyraproj/hiera/config
