@@ -104,7 +104,7 @@ Take a look at [test-fixtures](./hiera5/test-fixtures)
 
 ### Requirements
 
-* [Go](https://golang.org/doc/install) 1.12
+* [Go](https://golang.org/doc/install) 1.14+
 
 ### Notes
 
