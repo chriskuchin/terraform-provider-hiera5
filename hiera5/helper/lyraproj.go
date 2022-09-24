@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"context"
+
 	"github.com/lyraproj/dgo/vf"
 	"github.com/lyraproj/hiera/api"
 	"github.com/lyraproj/hiera/hiera"
