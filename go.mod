@@ -5,10 +5,10 @@ go 1.19
 require (
 	github.com/hashicorp/terraform-plugin-docs v0.5.1
 	github.com/hashicorp/terraform-plugin-sdk v1.17.2
+	github.com/lyraproj/dgo v0.4.4
 	github.com/lyraproj/hiera v0.4.6
 	github.com/lyraproj/hierasdk v0.4.4
 	github.com/spf13/cast v1.5.0
-	github.com/tada/dgo v0.5.1
 )
 
 require (
@@ -58,7 +58,6 @@ require (
 	github.com/jstemmer/go-junit-report v0.9.1 // indirect
 	github.com/klauspost/compress v1.11.2 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.1 // indirect
-	github.com/lyraproj/dgo v0.4.4 // indirect
 	github.com/lyraproj/dgoyaml v0.4.4 // indirect
 	github.com/mattn/go-colorable v0.1.11 // indirect
 	github.com/mattn/go-isatty v0.0.14 // indirect
@@ -75,7 +74,6 @@ require (
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/sirupsen/logrus v1.4.2 // indirect
 	github.com/spf13/afero v1.2.2 // indirect
-	github.com/tada/catch v0.0.0-20200501144157-878cbcd22dd2 // indirect
 	github.com/ulikunitz/xz v0.5.8 // indirect
 	github.com/vmihailenco/msgpack/v4 v4.3.12 // indirect
 	github.com/vmihailenco/tagparser v0.1.1 // indirect

@@ -365,17 +365,6 @@ github.com/spf13/afero/mem
 # github.com/spf13/cast v1.5.0
 ## explicit; go 1.18
 github.com/spf13/cast
-# github.com/tada/catch v0.0.0-20200501144157-878cbcd22dd2
-## explicit; go 1.13
-github.com/tada/catch
-github.com/tada/catch/pio
-# github.com/tada/dgo v0.5.1
-## explicit; go 1.14
-github.com/tada/dgo/dgo
-github.com/tada/dgo/internal
-github.com/tada/dgo/stringer
-github.com/tada/dgo/util
-github.com/tada/dgo/vf
 # github.com/ulikunitz/xz v0.5.8
 ## explicit; go 1.12
 github.com/ulikunitz/xz

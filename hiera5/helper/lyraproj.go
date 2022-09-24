@@ -6,11 +6,11 @@ import (
 
 	"context"
 
+	"github.com/lyraproj/dgo/vf"
 	"github.com/lyraproj/hiera/api"
 	"github.com/lyraproj/hiera/hiera"
 	"github.com/lyraproj/hiera/provider"
 	sdk "github.com/lyraproj/hierasdk/hiera"
-	"github.com/tada/dgo/vf"
 
 	"bytes"
 	"io"
