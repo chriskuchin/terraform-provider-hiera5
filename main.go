@@ -2,8 +2,8 @@ package main
 
 import (
 	"github.com/chriskuchin/terraform-provider-hiera5/hiera5"
-	"github.com/hashicorp/terraform-plugin-sdk/plugin"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 )
 
 // Run "go generate" to format example terraform files and generate the docs for the registry/website
@@ -18,7 +18,7 @@ import (
 
 func main() {
 	plugin.Serve(&plugin.ServeOpts{
-		ProviderFunc: func() terraform.ResourceProvider {
+		ProviderFunc: func() *schema.Provider {
 			return hiera5.Provider()
 		},
 	})
