@@ -79,11 +79,11 @@ func testAccDataSourceHiera5DefaultValueCheck(key string) resource.TestCheckFunc
 		}
 
 		attr := rs.Primary.Attributes
-		if attr["id"] != fmt.Sprintf("%s", key) {
+		if attr["id"] != key {
 			return fmt.Errorf(
 				"id is %s; want %s",
 				attr["id"],
-				fmt.Sprintf("%s", key),
+				key,
 			)
 		}
 

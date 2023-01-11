@@ -31,7 +31,7 @@ func dataSourceHiera5BoolRead(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[INFO] Reading hiera value")
 
 	keyName := d.Get("key").(string)
-	defaultValue, defaultSet := d.GetOkExists("default")
+	defaultValue, defaultSet := d.GetOk("default")
 	hiera := meta.(hiera5)
 
 	log.Printf("[ERROR] ###################  %s  %v  %v", keyName, defaultSet, defaultValue)
