@@ -79,11 +79,11 @@ func testAccDataSourceHiera5DefaultValueCheck(key string) resource.TestCheckFunc
 		}
 
 		attr := rs.Primary.Attributes
-		if attr["id"] != fmt.Sprintf("%s", key) {
+		if attr["id"] != key {
 			return fmt.Errorf(
 				"id is %s; want %s",
 				attr["id"],
-				fmt.Sprintf("%s", key),
+				key,
 			)
 		}
 
@@ -102,6 +102,7 @@ func testAccDataSourceHiera5DefaultValueCheck(key string) resource.TestCheckFunc
 func testAccDataSourceHiera5Config(key string) string {
 	return fmt.Sprintf(`
 		provider "hiera5" {
+			alias = "sut"
 			config = "test-fixtures/hiera.yaml"
 			scope = {
 				environment = "live"
@@ -111,10 +112,12 @@ func testAccDataSourceHiera5Config(key string) string {
 		}
 
 		data "hiera5" "%s" {
+		  provider = "hiera5.sut"
 		  key = "%s"
 		}
 
 		data "hiera5" "default" {
+			provider = "hiera5.sut"
 			key = "default"
 			default = "default_value"
 		}

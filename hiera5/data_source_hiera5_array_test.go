@@ -128,6 +128,7 @@ func testAccDataSourceHiera5DefaultArrayCheck(key string) resource.TestCheckFunc
 func testAccDataSourceHiera5ArrayConfig(key string) string {
 	return fmt.Sprintf(`
 		provider "hiera5" {
+			alias = "sut"
 			config = "test-fixtures/hiera.yaml"
 			scope = {
 				environment = "live"
@@ -137,10 +138,12 @@ func testAccDataSourceHiera5ArrayConfig(key string) string {
 		}
 
 		data "hiera5_array" "%s" {
+		  provider = "hiera5.sut"
 		  key = "%s"
 		}
 
 		data "hiera5_array" "default" {
+			provider = "hiera5.sut"
 			key = "default"
 			default = ["test1", "test2"]
 		}

@@ -29,6 +29,15 @@ func dataSourceHiera5Array() *schema.Resource {
 				},
 				Optional: true,
 			},
+			"scope": {
+				Type:     schema.TypeMap,
+				Default:  map[string]interface{}{},
+				Optional: true,
+			},
+			"merge": {
+				Type:     schema.TypeString,
+				Optional: true,
+			},
 		},
 	}
 }

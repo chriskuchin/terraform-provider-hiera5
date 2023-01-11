@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 
 	"github.com/spf13/cast"
 
@@ -121,7 +120,7 @@ func (h *hiera5) json(key string) (string, error) {
 	}
 
 	_ = json.Compact(&b, out)
-	out, _ = ioutil.ReadAll(io.Reader(&b))
+	out, _ = io.ReadAll(io.Reader(&b))
 
 	return string(out), nil
 }
