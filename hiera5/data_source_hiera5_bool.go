@@ -31,14 +31,14 @@ func dataSourceHiera5BoolRead(d *schema.ResourceData, meta interface{}) error {
 	log.Printf("[INFO] Reading hiera value")
 
 	keyName := d.Get("key").(string)
-	defaultValue, defaultSet := d.GetOk("default")
+	defaultValue, defaultSet := d.GetOkExists("default")
 	hiera := meta.(hiera5)
 
-	log.Printf("[ERROR] ###################  %s  %v  %v", keyName, defaultSet, defaultValue)
+	log.Printf("[INFO] ###################  %s  %v  %v", keyName, defaultSet, defaultValue)
 
 	v, err := hiera.bool(keyName)
 	if err != nil && !defaultSet {
-		log.Printf("[DEBUG] Error reading hiera value %v", err)
+		log.Printf("[ERROR] Error reading hiera value %v", err)
 		return err
 	}
 
