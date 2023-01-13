@@ -13,8 +13,7 @@ func TestAccDataSourceHiera5Json_Basic(t *testing.T) {
 	key := "aws_tags"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:  func() { testAccPreCheck(t) },
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataSourceHiera5JsonConfig(key),

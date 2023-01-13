@@ -13,8 +13,7 @@ func TestAccDataSourceHiera5Bool_Basic(t *testing.T) {
 	key := "enable_spot_instances"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:  func() { testAccPreCheck(t) },
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataSourceHiera5BoolConfig(key),

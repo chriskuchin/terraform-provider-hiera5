@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
+	"log"
+
 	"github.com/chriskuchin/terraform-provider-hiera5/hiera5"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
+	"github.com/hashicorp/terraform-plugin-framework/providerserver"
 )
 
 // Run "go generate" to format example terraform files and generate the docs for the registry/website
@@ -17,9 +19,16 @@ import (
 //go:generate go run github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
 
 func main() {
-	plugin.Serve(&plugin.ServeOpts{
-		ProviderFunc: func() *schema.Provider {
-			return hiera5.Provider()
+	err := providerserver.Serve(
+		context.Background(),
+		hiera5.New,
+		providerserver.ServeOpts{
+			Address: "registry.terraform.io/chriskuchin/hiera5",
+			// Debug:   true,
 		},
-	})
+	)
+
+	if err != nil {
+		log.Fatal(err)
+	}
 }

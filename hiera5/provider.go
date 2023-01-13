@@ -1,45 +1,112 @@
 package hiera5
 
 import (
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"context"
+
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/provider"
+	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// Provider is the top level function for terraform's provider API
-func Provider() *schema.Provider {
-	return &schema.Provider{
-		Schema: map[string]*schema.Schema{
-			"config": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Default:  "hiera.yaml",
+type Hiera5Provider struct{}
+
+type Hiera5ProviderModel struct {
+	Config types.String `tfsdk:"config"`
+	Scope  types.Map    `tfsdk:"scope"`
+	Merge  types.String `tfsdk:"merge"`
+}
+
+func New() provider.Provider {
+	return &Hiera5Provider{}
+}
+
+func (h *Hiera5Provider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Description: "Hiera5 Provider",
+		Attributes: map[string]schema.Attribute{
+			"config": schema.StringAttribute{
+				Description: "The location of the hiera config file",
+				Required:    true,
 			},
-			"scope": {
-				Type:     schema.TypeMap,
-				Default:  map[string]interface{}{},
-				Optional: true,
+			"scope": schema.MapAttribute{
+				ElementType: types.StringType,
+				Description: "The fact variables for determining which files to merge",
+				Optional:    true,
 			},
-			"merge": {
-				Type:     schema.TypeString,
-				Optional: true,
-				Default:  "first",
+			"merge": schema.StringAttribute{
+				Description: "The merge strategy",
+				Optional:    true,
 			},
 		},
-
-		DataSourcesMap: map[string]*schema.Resource{
-			"hiera5":       dataSourceHiera5(),
-			"hiera5_array": dataSourceHiera5Array(),
-			"hiera5_hash":  dataSourceHiera5Hash(),
-			"hiera5_json":  dataSourceHiera5Json(),
-			"hiera5_bool":  dataSourceHiera5Bool(),
-		},
-
-		ConfigureFunc: providerConfigure,
 	}
 }
-func providerConfigure(data *schema.ResourceData) (interface{}, error) {
-	return newHiera5(
-		data.Get("config").(string),
-		data.Get("scope").(map[string]interface{}),
-		data.Get("merge").(string),
-	), nil
+
+func (h *Hiera5Provider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "hiera5"
+	resp.Version = "grrr"
 }
+
+func (h *Hiera5Provider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	var data Hiera5ProviderModel
+
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	resp.DataSourceData = data
+	resp.ResourceData = data
+}
+
+func (h *Hiera5Provider) Resources(_ context.Context) []func() resource.Resource {
+	return nil
+}
+
+func (h *Hiera5Provider) DataSources(_ context.Context) []func() datasource.DataSource {
+	return []func() datasource.DataSource{
+		NewArrayDataSource,
+	}
+}
+
+// Provider is the top level function for terraform's provider API
+// func Provider() *schema.Provider {
+// 	return &schema.Provider{
+// 		Schema: map[string]*schema.Schema{
+// 			"config": {
+// 				Type:     schema.TypeString,
+// 				Optional: true,
+// 				Default:  "hiera.yaml",
+// 			},
+// 			"scope": {
+// 				Type:     schema.TypeMap,
+// 				Default:  map[string]interface{}{},
+// 				Optional: true,
+// 			},
+// 			"merge": {
+// 				Type:     schema.TypeString,
+// 				Optional: true,
+// 				Default:  "first",
+// 			},
+// 		},
+
+// 		DataSourcesMap: map[string]*schema.Resource{
+// 			"hiera5":       dataSourceHiera5(),
+// 			"hiera5_array": dataSourceHiera5Array(),
+// 			"hiera5_hash":  dataSourceHiera5Hash(),
+// 			"hiera5_json":  dataSourceHiera5Json(),
+// 			"hiera5_bool":  dataSourceHiera5Bool(),
+// 		},
+
+// 		ConfigureFunc: providerConfigure,
+// 	}
+// }
+// func providerConfigure(data *schema.ResourceData) (interface{}, error) {
+// 	return newHiera5(
+// 		data.Get("config").(string),
+// 		data.Get("scope").(map[string]interface{}),
+// 		data.Get("merge").(string),
+// 	), nil
+// }
