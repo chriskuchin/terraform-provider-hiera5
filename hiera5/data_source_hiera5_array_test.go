@@ -2,6 +2,7 @@ package hiera5
 
 import (
 	"fmt"
+	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -20,13 +21,13 @@ func TestAccDataSourceHiera5Array_Basic(t *testing.T) {
 					testAccDataSourceHiera5ArrayCheck(key),
 				),
 			},
-			// {
-			// 	Config: testAccDataSourceHiera5ArrayConfig(keyUnavailable),
-			// 	Check: resource.ComposeTestCheckFunc(
-			// 		testAccDataSourceHiera5ArrayCheck(keyUnavailable),
-			// 	),
-			// 	ExpectError: regexp.MustCompile("key '" + keyUnavailable + "' not found"),
-			// },
+			{
+				Config: testAccDataSourceHiera5ArrayConfig(keyUnavailable),
+				Check: resource.ComposeTestCheckFunc(
+					testAccDataSourceHiera5ArrayCheck(keyUnavailable),
+				),
+				ExpectError: regexp.MustCompile(".*"),
+			},
 			{
 				Config: testAccDataSourceHiera5ArrayConfig(key),
 				Check: resource.ComposeTestCheckFunc(
