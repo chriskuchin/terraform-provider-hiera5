@@ -2,14 +2,12 @@ package hiera5
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var _ datasource.DataSource = &Hiera5ArrayDataSource{}
@@ -68,19 +66,11 @@ func (d *Hiera5ArrayDataSource) Read(ctx context.Context, req datasource.ReadReq
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
-	tflog.Info(ctx, "reading hiera array", map[string]interface{}{"key": data.Key.String(), "default": data.Default.Elements()})
-
-	// keyName := d.Get("key").(string)
-	// rawList, defaultIsSet := d.GetOk("default")
-
 	rawList, err := d.client.array(data.Key.String())
-	if err != nil {
+	if err != nil && data.Default.IsNull() {
 		resp.Diagnostics.AddAttributeWarning(path.Root("key"),
 			"Failed to find the key in the data",
 			"Datasource errors when an invalid key is searched for")
-	}
-
-	if data.Default.IsNull() {
 		resp.Diagnostics.AddAttributeWarning(path.Root("default"),
 			"Default value is not set",
 			"If default value is set and key is not found it will not error")
@@ -96,7 +86,6 @@ func (d *Hiera5ArrayDataSource) Read(ctx context.Context, req datasource.ReadReq
 	} else {
 		listValue := []attr.Value{}
 		for _, v := range rawList {
-			tflog.Info(ctx, fmt.Sprintf("%v", v))
 			listValue = append(listValue, types.StringValue(v.(string)))
 		}
 
@@ -112,42 +101,3 @@ func (d *Hiera5ArrayDataSource) Read(ctx context.Context, req datasource.ReadReq
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
-
-// func dataSourceHiera5Array() *schema.Resource {
-// 	return &schema.Resource{
-// 		Read: dataSourceHiera5ArrayRead,
-
-// 		Schema: map[string]*schema.Schema{
-// 			"key": {
-// 				Type:     schema.TypeString,
-// 				Required: true,
-// 			},
-// 			"value": {
-// 				Type: schema.TypeList,
-// 				Elem: &schema.Schema{
-// 					Type: schema.TypeString,
-// 				},
-// 				Computed: true,
-// 			},
-// 			"default": {
-// 				Type: schema.TypeList,
-// 				Elem: &schema.Schema{
-// 					Type: schema.TypeString,
-// 				},
-// 				Optional: true,
-// 			},
-// 			"scope": {
-// 				Type:     schema.TypeMap,
-// 				Default:  map[string]interface{}{},
-// 				Optional: true,
-// 			},
-// 			"merge": {
-// 				Type:     schema.TypeString,
-// 				Optional: true,
-// 			},
-// 		},
-// 	}
-// }
-
-// func dataSourceHiera5ArrayRead(d *schema.ResourceData, meta interface{}) error {
-// }

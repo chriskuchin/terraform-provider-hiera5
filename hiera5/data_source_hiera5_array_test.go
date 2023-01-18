@@ -27,12 +27,12 @@ func TestAccDataSourceHiera5Array_Basic(t *testing.T) {
 			// 	),
 			// 	ExpectError: regexp.MustCompile("key '" + keyUnavailable + "' not found"),
 			// },
-			// {
-			// 	Config: testAccDataSourceHiera5ArrayConfig(key),
-			// 	Check: resource.ComposeTestCheckFunc(
-			// 		testAccDataSourceHiera5DefaultArrayCheck("default"),
-			// 	),
-			// },
+			{
+				Config: testAccDataSourceHiera5ArrayConfig(key),
+				Check: resource.ComposeTestCheckFunc(
+					testAccDataSourceHiera5DefaultArrayCheck("default"),
+				),
+			},
 		},
 	})
 }
@@ -91,8 +91,6 @@ func testAccDataSourceHiera5DefaultArrayCheck(key string) resource.TestCheckFunc
 		if !ok {
 			return fmt.Errorf("root module has no resource called %s", name)
 		}
-
-		fmt.Println(rs.Primary.Attributes)
 
 		attr := rs.Primary.Attributes
 		if attr["id"] != key {

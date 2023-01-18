@@ -8,7 +8,6 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 type Hiera5Provider struct{}
@@ -73,7 +72,6 @@ func (h *Hiera5Provider) Configure(ctx context.Context, req provider.ConfigureRe
 	for k, v := range data.Scope {
 		scope[k] = v
 	}
-	tflog.Debug(ctx, "configuring hiera5 provider with scope", scope)
 
 	client := hiera5{
 		Config: data.Config.ValueString(),
@@ -94,43 +92,3 @@ func (h *Hiera5Provider) DataSources(_ context.Context) []func() datasource.Data
 		NewArrayDataSource,
 	}
 }
-
-// Provider is the top level function for terraform's provider API
-// func Provider() *schema.Provider {
-// 	return &schema.Provider{
-// 		Schema: map[string]*schema.Schema{
-// 			"config": {
-// 				Type:     schema.TypeString,
-// 				Optional: true,
-// 				Default:  "hiera.yaml",
-// 			},
-// 			"scope": {
-// 				Type:     schema.TypeMap,
-// 				Default:  map[string]interface{}{},
-// 				Optional: true,
-// 			},
-// 			"merge": {
-// 				Type:     schema.TypeString,
-// 				Optional: true,
-// 				Default:  "first",
-// 			},
-// 		},
-
-// 		DataSourcesMap: map[string]*schema.Resource{
-// 			"hiera5":       dataSourceHiera5(),
-// 			"hiera5_array": dataSourceHiera5Array(),
-// 			"hiera5_hash":  dataSourceHiera5Hash(),
-// 			"hiera5_json":  dataSourceHiera5Json(),
-// 			"hiera5_bool":  dataSourceHiera5Bool(),
-// 		},
-
-// 		ConfigureFunc: providerConfigure,
-// 	}
-// }
-// func providerConfigure(data *schema.ResourceData) (interface{}, error) {
-// 	return newHiera5(
-// 		data.Get("config").(string),
-// 		data.Get("scope").(map[string]interface{}),
-// 		data.Get("merge").(string),
-// 	), nil
-// }
