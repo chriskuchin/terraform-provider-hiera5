@@ -16,9 +16,9 @@ func TestAccDataSourceHiera5Array_Basic(t *testing.T) {
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataSourceHiera5ArrayConfig(key),
-				// Check: resource.ComposeTestCheckFunc(
-				// 	testAccDataSourceHiera5ArrayCheck(key),
-				// ),
+				Check: resource.ComposeTestCheckFunc(
+					testAccDataSourceHiera5ArrayCheck(key),
+				),
 			},
 			// {
 			// 	Config: testAccDataSourceHiera5ArrayConfig(keyUnavailable),
@@ -131,7 +131,7 @@ func testAccDataSourceHiera5ArrayConfig(key string) string {
 				environment = "live"
 				service     = "api"
 			}
-		        merge = "deep"
+			merge = "deep"
 		}
 
 		data "hiera5_array" "%s" {

@@ -2,19 +2,20 @@ package hiera5
 
 import (
 	"context"
-	"log"
+	"fmt"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 var _ datasource.DataSource = &Hiera5ArrayDataSource{}
 
 type Hiera5ArrayDataSource struct {
-	config Hiera5ProviderModel
+	client hiera5
 }
 
 type Hiera5ArrayDataSourceModel struct {
@@ -37,7 +38,7 @@ func (d *Hiera5ArrayDataSource) Configure(_ context.Context, req datasource.Conf
 		return
 	}
 
-	d.config = req.ProviderData.(Hiera5ProviderModel)
+	d.client = req.ProviderData.(hiera5)
 }
 
 func (d *Hiera5ArrayDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
@@ -61,31 +62,52 @@ func (d *Hiera5ArrayDataSource) Schema(ctx context.Context, req datasource.Schem
 	}
 }
 
-func (ha *Hiera5ArrayDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+func (d *Hiera5ArrayDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
 	var data Hiera5ArrayDataSourceModel
 
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
-	log.Printf("[INFO] Reading hiera array")
+	tflog.Info(ctx, "reading hiera array", map[string]interface{}{"key": data.Key.String(), "default": data.Default.Elements()})
 
-	// var defaultList types.List
-	// if !data.Default.IsNull() {
-	// 	defaultList = data.Default
-	// }
 	// keyName := d.Get("key").(string)
 	// rawList, defaultIsSet := d.GetOk("default")
-	// hiera := meta.(hiera5)
 
-	// v, err := hiera.array(keyName)
-	// if err != nil && !defaultIsSet {
-	// 	log.Printf("[DEBUG] Error reading hiera array %s", err)
-	// 	return err
-	// }
+	rawList, err := d.client.array(data.Key.String())
+	if err != nil {
+		resp.Diagnostics.AddAttributeWarning(path.Root("key"),
+			"Failed to find the key in the data",
+			"Datasource errors when an invalid key is searched for")
+	}
+
+	if data.Default.IsNull() {
+		resp.Diagnostics.AddAttributeWarning(path.Root("default"),
+			"Default value is not set",
+			"If default value is set and key is not found it will not error")
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
 	data.ID = data.Key
-	val, _ := types.ListValue(basetypes.StringType{}, []attr.Value{basetypes.NewStringValue("test")})
-	data.Value = val
+	if err != nil {
+		data.Value = data.Default
+	} else {
+		listValue := []attr.Value{}
+		for _, v := range rawList {
+			tflog.Info(ctx, fmt.Sprintf("%v", v))
+			listValue = append(listValue, types.StringValue(v.(string)))
+		}
+
+		result, diag := types.ListValue(types.StringType, listValue)
+		resp.Diagnostics.Append(diag...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		data.Value = result
+	}
 
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

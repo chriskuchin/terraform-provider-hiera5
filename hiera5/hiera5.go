@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 
 	"github.com/spf13/cast"
 
@@ -39,6 +40,7 @@ func (h *hiera5) lookup(key string, valueType string) ([]byte, error) {
 }
 
 func (h *hiera5) array(key string) ([]interface{}, error) {
+	log.Printf("[INFO] XXXXXXXXXXXXXXXXXX %+v\n", h)
 	var (
 		f interface{}
 		e []interface{}

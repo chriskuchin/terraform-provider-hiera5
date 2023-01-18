@@ -8,14 +8,15 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
 type Hiera5Provider struct{}
 
 type Hiera5ProviderModel struct {
-	Config types.String `tfsdk:"config"`
-	Scope  types.Map    `tfsdk:"scope"`
-	Merge  types.String `tfsdk:"merge"`
+	Config types.String      `tfsdk:"config"`
+	Scope  map[string]string `tfsdk:"scope"`
+	Merge  types.String      `tfsdk:"merge"`
 }
 
 func New() provider.Provider {
@@ -28,7 +29,7 @@ func (h *Hiera5Provider) Schema(ctx context.Context, req provider.SchemaRequest,
 		Attributes: map[string]schema.Attribute{
 			"config": schema.StringAttribute{
 				Description: "The location of the hiera config file",
-				Required:    true,
+				Optional:    true,
 			},
 			"scope": schema.MapAttribute{
 				ElementType: types.StringType,
@@ -45,7 +46,6 @@ func (h *Hiera5Provider) Schema(ctx context.Context, req provider.SchemaRequest,
 
 func (h *Hiera5Provider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
 	resp.TypeName = "hiera5"
-	resp.Version = "grrr"
 }
 
 func (h *Hiera5Provider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
@@ -57,8 +57,32 @@ func (h *Hiera5Provider) Configure(ctx context.Context, req provider.ConfigureRe
 		return
 	}
 
-	resp.DataSourceData = data
-	resp.ResourceData = data
+	if data.Config.IsNull() {
+		data.Config = types.StringValue("hiera.yml")
+	}
+
+	if data.Merge.IsNull() {
+		data.Merge = types.StringValue("first")
+	}
+
+	if data.Scope == nil {
+		data.Scope = map[string]string{}
+	}
+
+	scope := map[string]interface{}{}
+	for k, v := range data.Scope {
+		scope[k] = v
+	}
+	tflog.Debug(ctx, "configuring hiera5 provider with scope", scope)
+
+	client := hiera5{
+		Config: data.Config.ValueString(),
+		Scope:  scope,
+		Merge:  data.Merge.ValueString(),
+	}
+
+	resp.DataSourceData = client
+	resp.ResourceData = client
 }
 
 func (h *Hiera5Provider) Resources(_ context.Context) []func() resource.Resource {
