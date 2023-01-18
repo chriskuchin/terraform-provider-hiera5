@@ -68,12 +68,9 @@ func (d *Hiera5ArrayDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	rawList, err := d.client.array(data.Key.String())
 	if err != nil && data.Default.IsNull() {
-		resp.Diagnostics.AddAttributeWarning(path.Root("key"),
-			"Failed to find the key in the data",
-			"Datasource errors when an invalid key is searched for")
-		resp.Diagnostics.AddAttributeWarning(path.Root("default"),
-			"Default value is not set",
-			"If default value is set and key is not found it will not error")
+		resp.Diagnostics.AddAttributeError(path.Root("key"),
+			"key not in data",
+			"When key is unavailable and a default value is not set an error is raised")
 	}
 
 	if resp.Diagnostics.HasError() {
