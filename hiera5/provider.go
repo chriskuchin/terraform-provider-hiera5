@@ -90,5 +90,9 @@ func (h *Hiera5Provider) Resources(_ context.Context) []func() resource.Resource
 func (h *Hiera5Provider) DataSources(_ context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewArrayDataSource,
+		NewBoolDataSource,
+		NewStringDataSource,
+		NewJSONDataSource,
+		NewHashDataSource,
 	}
 }

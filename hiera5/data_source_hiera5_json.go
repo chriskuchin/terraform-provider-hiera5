@@ -2,9 +2,11 @@ package hiera5
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
@@ -17,8 +19,8 @@ type Hiera5JSONDataSource struct {
 type Hiera5JSONDataSourceModel struct {
 	ID      types.String `tfsdk:"id"`
 	Key     types.String `tfsdk:"key"`
-	Value   types.List   `tfsdk:"value"`
-	Default types.List   `tfsdk:"default"`
+	Value   types.String `tfsdk:"value"`
+	Default types.String `tfsdk:"default"`
 }
 
 func NewJSONDataSource() datasource.DataSource {
@@ -39,7 +41,20 @@ func (hb *Hiera5JSONDataSource) Configure(_ context.Context, req datasource.Conf
 
 func (hb *Hiera5JSONDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		Attributes: map[string]schema.Attribute{},
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
+				Computed: true,
+			},
+			"key": schema.StringAttribute{
+				Required: true,
+			},
+			"value": schema.StringAttribute{
+				Computed: true,
+			},
+			"default": schema.StringAttribute{
+				Optional: true,
+			},
+		},
 	}
 }
 
@@ -49,52 +64,23 @@ func (hb *Hiera5JSONDataSource) Read(ctx context.Context, req datasource.ReadReq
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
+	validDefault := !data.Default.IsNull() && json.Valid([]byte(data.Default.ValueString()))
+
+	v, err := hb.client.json(data.Key.ValueString())
+	if err != nil && !validDefault {
+		resp.Diagnostics.AddAttributeError(path.Root("key"),
+			"key not found",
+			"the key was not found and no default value was provided")
+		return
+	}
+
+	data.ID = data.Key
+	if err != nil {
+		data.Value = data.Default
+	} else {
+		data.Value = types.StringValue(v)
+	}
+
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
-
-// func dataSourceHiera5Json() *schema.Resource {
-// 	return &schema.Resource{
-// 		Read: dataSourceHiera5JsonRead,
-
-// 		Schema: map[string]*schema.Schema{
-// 			"key": {
-// 				Type:     schema.TypeString,
-// 				Required: true,
-// 			},
-// 			"value": {
-// 				Type:     schema.TypeString,
-// 				Computed: true,
-// 			},
-// 			"default": {
-// 				Type:     schema.TypeString,
-// 				Optional: true,
-// 			},
-// 		},
-// 	}
-// }
-
-// func dataSourceHiera5JsonRead(d *schema.ResourceData, meta interface{}) error {
-// 	log.Printf("[INFO] Reading hiera json")
-
-// 	keyName := d.Get("key").(string)
-// 	defaultValue := d.Get("default").(string)
-// 	validDefault := json.Valid([]byte(defaultValue))
-// 	hiera := meta.(hiera5)
-
-// 	v, err := hiera.json(keyName)
-// 	if err != nil && (defaultValue == "" || !validDefault) {
-// 		log.Printf("[DEBUG] Error reading hiera json %s", err)
-// 		return err
-// 	}
-
-// 	d.SetId(keyName)
-
-// 	if err != nil && defaultValue != "" && validDefault {
-// 		d.Set("value", defaultValue)
-// 	} else {
-// 		d.Set("value", v)
-// 	}
-
-// 	return nil
-// }
