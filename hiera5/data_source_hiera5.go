@@ -63,11 +63,7 @@ func (hb *Hiera5StringDataSource) Read(ctx context.Context, req datasource.ReadR
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
-	// 	keyName := d.Get("key").(string)
-	// 	defaultValue := d.Get("default").(string)
-	// 	hiera := meta.(hiera5)
-
-	v, err := hb.client.value(data.Key.ValueString())
+	v, err := hb.client.value(ctx, data.Key.ValueString())
 	if err != nil && data.Default.IsNull() {
 		resp.Diagnostics.AddAttributeError(path.Root("key"),
 			"key not found",
@@ -89,24 +85,3 @@ func (hb *Hiera5StringDataSource) Read(ctx context.Context, req datasource.ReadR
 	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
-
-// func dataSourceHiera5() *schema.Resource {
-// 	return &schema.Resource{
-// 		Read: dataSourceHiera5Read,
-
-// 		Schema: map[string]*schema.Schema{
-// 			"key": {
-// 				Type:     schema.TypeString,
-// 				Required: true,
-// 			},
-// 			"value": {
-// 				Type:     schema.TypeString,
-// 				Computed: true,
-// 			},
-// 			"default": {
-// 				Type:     schema.TypeString,
-// 				Optional: true,
-// 			},
-// 		},
-// 	}
-// }

@@ -66,7 +66,7 @@ func (hb *Hiera5JSONDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	validDefault := !data.Default.IsNull() && json.Valid([]byte(data.Default.ValueString()))
 
-	v, err := hb.client.json(data.Key.ValueString())
+	v, err := hb.client.json(ctx, data.Key.ValueString())
 	if err != nil && !validDefault {
 		resp.Diagnostics.AddAttributeError(path.Root("key"),
 			"key not found",

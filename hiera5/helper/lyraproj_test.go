@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -11,6 +12,7 @@ func TestLookupSimple(t *testing.T) {
 	var f interface{}
 
 	out, err := Lookup(
+		context.TODO(),
 		"../test-fixtures/hiera.yaml",
 		"deep",
 		"is_utc",
@@ -33,6 +35,7 @@ func TestLookupSimple(t *testing.T) {
 
 func TestLookupInvalidConfig(t *testing.T) {
 	out, err := Lookup(
+		context.TODO(),
 		"../doesnt_exists/hiera.yaml",
 		"deep",
 		"is_utc",
@@ -47,6 +50,7 @@ func TestLookupEmptyString(t *testing.T) {
 	var f interface{}
 
 	out, err := Lookup(
+		context.TODO(),
 		"../test-fixtures/hiera.yaml",
 		"deep",
 		"empty_string",
@@ -66,6 +70,7 @@ func TestLookupEmptyString(t *testing.T) {
 
 func TestLookupNonExistant(t *testing.T) {
 	out, err := Lookup(
+		context.TODO(),
 		"../test-fixtures/hiera.yaml",
 		"deep",
 		"doesnt_exists",

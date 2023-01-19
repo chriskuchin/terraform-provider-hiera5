@@ -66,7 +66,7 @@ func (d *Hiera5ArrayDataSource) Read(ctx context.Context, req datasource.ReadReq
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
-	rawList, err := d.client.array(data.Key.String())
+	rawList, err := d.client.array(ctx, data.Key.String())
 	if err != nil && data.Default.IsNull() {
 		resp.Diagnostics.AddAttributeError(path.Root("key"),
 			"key not in data",

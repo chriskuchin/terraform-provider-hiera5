@@ -68,7 +68,7 @@ func (hb *Hiera5HashDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	// 	rawMapDefault, defaultIsSet := d.GetOk("default")
 
-	v, err := hb.client.hash(data.Key.ValueString())
+	v, err := hb.client.hash(ctx, data.Key.ValueString())
 	if err != nil && data.Default.IsNull() {
 		resp.Diagnostics.AddAttributeError(path.Root("key"),
 			"key not found",

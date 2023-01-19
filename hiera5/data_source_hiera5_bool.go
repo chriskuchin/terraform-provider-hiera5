@@ -63,7 +63,7 @@ func (hb *Hiera5BoolDataSource) Read(ctx context.Context, req datasource.ReadReq
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
-	v, err := hb.client.bool(data.Key.ValueString())
+	v, err := hb.client.bool(ctx, data.Key.ValueString())
 	if err != nil && data.Default.IsNull() {
 		resp.Diagnostics.AddAttributeError(path.Root("key"),
 			"Key not found",
