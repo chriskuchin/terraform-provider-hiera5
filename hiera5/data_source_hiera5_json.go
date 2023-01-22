@@ -1,54 +1,86 @@
 package hiera5
 
 import (
+	"context"
 	"encoding/json"
-	"log"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func dataSourceHiera5Json() *schema.Resource {
-	return &schema.Resource{
-		Read: dataSourceHiera5JsonRead,
+var _ datasource.DataSource = &Hiera5JSONDataSource{}
 
-		Schema: map[string]*schema.Schema{
-			"key": {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			"value": {
-				Type:     schema.TypeString,
+type Hiera5JSONDataSource struct {
+	client hiera5
+}
+
+type Hiera5JSONDataSourceModel struct {
+	ID      types.String `tfsdk:"id"`
+	Key     types.String `tfsdk:"key"`
+	Value   types.String `tfsdk:"value"`
+	Default types.String `tfsdk:"default"`
+}
+
+func NewJSONDataSource() datasource.DataSource {
+	return &Hiera5JSONDataSource{}
+}
+
+func (hb *Hiera5JSONDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = "hiera5_json"
+}
+
+func (hb *Hiera5JSONDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	hb.client = req.ProviderData.(hiera5)
+}
+
+func (hb *Hiera5JSONDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
 				Computed: true,
 			},
-			"default": {
-				Type:     schema.TypeString,
+			"key": schema.StringAttribute{
+				Required: true,
+			},
+			"value": schema.StringAttribute{
+				Computed: true,
+			},
+			"default": schema.StringAttribute{
 				Optional: true,
 			},
 		},
 	}
 }
 
-func dataSourceHiera5JsonRead(d *schema.ResourceData, meta interface{}) error {
-	log.Printf("[INFO] Reading hiera json")
+func (hb *Hiera5JSONDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data Hiera5JSONDataSourceModel
 
-	keyName := d.Get("key").(string)
-	defaultValue := d.Get("default").(string)
-	validDefault := json.Valid([]byte(defaultValue))
-	hiera := meta.(hiera5)
+	// Read Terraform configuration data into the model
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
-	v, err := hiera.json(keyName)
-	if err != nil && (defaultValue == "" || !validDefault) {
-		log.Printf("[DEBUG] Error reading hiera json %s", err)
-		return err
+	validDefault := !data.Default.IsNull() && json.Valid([]byte(data.Default.ValueString()))
+
+	v, err := hb.client.json(ctx, data.Key.ValueString())
+	if err != nil && !validDefault {
+		resp.Diagnostics.AddAttributeError(path.Root("key"),
+			"key not found",
+			"the key was not found and no default value was provided")
+		return
 	}
 
-	d.SetId(keyName)
-
-	if err != nil && defaultValue != "" && validDefault {
-		d.Set("value", defaultValue)
+	data.ID = data.Key
+	if err != nil {
+		data.Value = data.Default
 	} else {
-		d.Set("value", v)
+		data.Value = types.StringValue(v)
 	}
 
-	return nil
+	// Save data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

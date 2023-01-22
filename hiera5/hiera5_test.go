@@ -1,6 +1,7 @@
 package hiera5
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 
@@ -14,7 +15,7 @@ func TestHiera5Lookup(t *testing.T) {
 
 	hiera := testHiera5Config()
 
-	out, err := hiera.lookup("aws_cloudwatch_enable", "")
+	out, err := hiera.lookup(context.TODO(), "aws_cloudwatch_enable", "")
 	if err != nil {
 		t.Errorf("Error running hiera: %s", err)
 	}
@@ -34,7 +35,7 @@ func TestHiera5Lookup(t *testing.T) {
 func TestHiera5Array(t *testing.T) {
 	hiera := testHiera5Config()
 
-	v, err := hiera.array("java_opts")
+	v, err := hiera.array(context.TODO(), "java_opts")
 	if err != nil {
 		t.Errorf("Error running hiera.Array: %s", err)
 	}
@@ -63,19 +64,19 @@ func TestHiera5Array(t *testing.T) {
 		)
 	}
 
-	v2, err2 := hiera.array(keyUnavailable)
+	v2, err2 := hiera.array(context.TODO(), keyUnavailable)
 	if err2 == nil || v2 != nil {
 		t.Errorf("Error running hiera.Array: %s", v2)
 	}
 
-	v3, err3 := hiera.array("aws_tags")
+	v3, err3 := hiera.array(context.TODO(), "aws_tags")
 	if err3 == nil || v3 != nil {
 		t.Errorf("Error running hiera.Array: %s", v3)
 	}
 
 	hieraBad := testHiera5ConfigBad()
 
-	v4, err4 := hieraBad.array("java_opts")
+	v4, err4 := hieraBad.array(context.TODO(), "java_opts")
 	if err4 == nil || v4 != nil {
 		t.Errorf("Error running hiera.Array: %s", v4)
 	}
@@ -84,7 +85,7 @@ func TestHiera5Array(t *testing.T) {
 func TestHiera5Hash(t *testing.T) {
 	hiera := testHiera5Config()
 
-	v, err := hiera.hash("aws_tags")
+	v, err := hiera.hash(context.TODO(), "aws_tags")
 	if err != nil {
 		t.Errorf("Error running hiera.Hash: %s", err)
 	}
@@ -97,19 +98,19 @@ func TestHiera5Hash(t *testing.T) {
 		t.Errorf("aws_tags.tier is %s; want %s", v, "1")
 	}
 
-	v2, err2 := hiera.hash(keyUnavailable)
+	v2, err2 := hiera.hash(context.TODO(), keyUnavailable)
 	if err2 == nil || v2 != nil {
 		t.Errorf("Error running hiera.Hash: %s", v2)
 	}
 
-	v3, err3 := hiera.hash("java_opts")
+	v3, err3 := hiera.hash(context.TODO(), "java_opts")
 	if err3 == nil || v3 != nil {
 		t.Errorf("Error running hiera.Hash: %s", v3)
 	}
 
 	hieraBad := testHiera5ConfigBad()
 
-	v4, err4 := hieraBad.hash("aws_tags")
+	v4, err4 := hieraBad.hash(context.TODO(), "aws_tags")
 	if err4 == nil || v4 != nil {
 		t.Errorf("Error running hiera.Hash: %s", v4)
 	}
@@ -118,7 +119,7 @@ func TestHiera5Hash(t *testing.T) {
 func TestHiera5Value(t *testing.T) {
 	hiera := testHiera5Config()
 
-	v, err := hiera.value("aws_cloudwatch_enable")
+	v, err := hiera.value(context.TODO(), "aws_cloudwatch_enable")
 	if err != nil {
 		t.Errorf("Error running hiera.Value: %s", err)
 	}
@@ -127,14 +128,14 @@ func TestHiera5Value(t *testing.T) {
 		t.Errorf("aws_cloudwatch_enable is %s; want %s", v, "true")
 	}
 
-	v2, err2 := hiera.value(keyUnavailable)
+	v2, err2 := hiera.value(context.TODO(), keyUnavailable)
 	if err2 == nil || v2 != "" {
 		t.Errorf("Error running hiera.value: %s", v2)
 	}
 
 	hieraBad := testHiera5ConfigBad()
 
-	v4, err4 := hieraBad.value("aws_cloudwatch_enable")
+	v4, err4 := hieraBad.value(context.TODO(), "aws_cloudwatch_enable")
 	if err4 == nil || v4 != "" {
 		t.Errorf("Error running hiera.value: %s", v4)
 	}
@@ -143,7 +144,7 @@ func TestHiera5Value(t *testing.T) {
 func TestHiera5Json(t *testing.T) {
 	hiera := testHiera5Config()
 
-	v, err := hiera.json("aws_tags")
+	v, err := hiera.json(context.TODO(), "aws_tags")
 	if err != nil {
 		t.Errorf("Error running hiera.json: %s", err)
 	}
@@ -152,14 +153,14 @@ func TestHiera5Json(t *testing.T) {
 		t.Errorf("aws_tags is %s; want %s", v, `{"team":"A","tier":1}`)
 	}
 
-	v2, err2 := hiera.json(keyUnavailable)
+	v2, err2 := hiera.json(context.TODO(), keyUnavailable)
 	if err2 == nil || v2 != "" {
 		t.Errorf("Error running hiera.json: %s", v2)
 	}
 
 	hieraBad := testHiera5ConfigBad()
 
-	v4, err4 := hieraBad.json("aws_cloudwatch_enable")
+	v4, err4 := hieraBad.json(context.TODO(), "aws_cloudwatch_enable")
 	if err4 == nil || v4 != "" {
 		t.Errorf("Error running hiera.json: %s", v4)
 	}

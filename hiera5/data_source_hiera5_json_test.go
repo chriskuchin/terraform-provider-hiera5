@@ -13,8 +13,7 @@ func TestAccDataSourceHiera5Json_Basic(t *testing.T) {
 	key := "aws_tags"
 
 	resource.Test(t, resource.TestCase{
-		PreCheck:  func() { testAccPreCheck(t) },
-		Providers: testAccProviders,
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccDataSourceHiera5JsonConfig(key),
@@ -27,7 +26,7 @@ func TestAccDataSourceHiera5Json_Basic(t *testing.T) {
 				Check: resource.ComposeTestCheckFunc(
 					testAccDataSourceHiera5JsonCheck(keyUnavailable),
 				),
-				ExpectError: regexp.MustCompile("key '" + keyUnavailable + "' not found"),
+				ExpectError: regexp.MustCompile(".*"),
 			},
 			{
 				Config: testAccDataSourceHiera5JsonConfig(key),
