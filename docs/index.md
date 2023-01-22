@@ -33,6 +33,6 @@ provider "hiera5" {
 
 ### Optional
 
-- `config` (String) The location of the hiera config file
-- `merge` (String) The merge strategy
-- `scope` (Map of String) The fact variables for determining which files to merge
+- `config` (String) The location of the hiera config file. Default: ./hiera.yml
+- `merge` (String) The merge strategy to use in merging data. Possible values include `first`, `unique`, `hash`, and `deep`. Further documentation can be found [here](https://www.puppet.com/docs/puppet/7/hiera_merging.html). Default: first
+- `scope` (Map of String) Map object defining the various hiera variables to determin how hiera merges files.

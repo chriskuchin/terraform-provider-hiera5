@@ -27,17 +27,13 @@ func (h *Hiera5Provider) Schema(ctx context.Context, req provider.SchemaRequest,
 		Description: "Hiera5 Provider",
 		Attributes: map[string]schema.Attribute{
 			"config": schema.StringAttribute{
-				Description: "The location of the hiera config file",
+				Description: "The location of the hiera config file. Default: ./hiera.yml",
 				Optional:    true,
 			},
-			"scope": schema.MapAttribute{
-				ElementType: types.StringType,
-				Description: "The fact variables for determining which files to merge",
-				Optional:    true,
-			},
+			"scope": scopeAttribute,
 			"merge": schema.StringAttribute{
-				Description: "The merge strategy",
-				Optional:    true,
+				MarkdownDescription: "The merge strategy to use in merging data. Possible values include `first`, `unique`, `hash`, and `deep`. Further documentation can be found [here](https://www.puppet.com/docs/puppet/7/hiera_merging.html). Default: first",
+				Optional:            true,
 			},
 		},
 	}

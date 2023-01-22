@@ -23,15 +23,15 @@ data "hiera5_array" "java_opts" {
 
 ### Required
 
-- `key` (String)
+- `key` (String) The key to lookup within the hiera data. Data Source will error if the key is not found and no default is provided
 
 ### Optional
 
-- `default` (List of String)
+- `default` (List of String) Default value to return if the value isn't found in the hiera data.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-- `value` (List of String)
+- `value` (List of String) The result of the lookup in the hiera data, or the default value if the key is not found.
 
 

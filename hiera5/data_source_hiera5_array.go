@@ -42,19 +42,17 @@ func (d *Hiera5ArrayDataSource) Configure(_ context.Context, req datasource.Conf
 func (d *Hiera5ArrayDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"id": schema.StringAttribute{
-				Computed: true,
-			},
-			"key": schema.StringAttribute{
-				Required: true,
-			},
+			"id":  idAttribute,
+			"key": keyAttribute,
 			"value": schema.ListAttribute{
 				ElementType: types.StringType,
 				Computed:    true,
+				Description: valueDescription,
 			},
 			"default": schema.ListAttribute{
 				ElementType: types.StringType,
 				Optional:    true,
+				Description: defaultDescription,
 			},
 		},
 	}

@@ -27,15 +27,15 @@ locals {
 
 ### Required
 
-- `key` (String)
+- `key` (String) The key to lookup within the hiera data. Data Source will error if the key is not found and no default is provided
 
 ### Optional
 
-- `default` (String)
+- `default` (String) Default value to return if the value isn't found in the hiera data.
 
 ### Read-Only
 
 - `id` (String) The ID of this resource.
-- `value` (String)
+- `value` (String) The result of the lookup in the hiera data, or the default value if the key is not found.
 
 
