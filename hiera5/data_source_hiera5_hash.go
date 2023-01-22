@@ -1,51 +1,100 @@
 package hiera5
 
 import (
-	"log"
+	"context"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func dataSourceHiera5Hash() *schema.Resource {
-	return &schema.Resource{
-		Read: dataSourceHiera5HashRead,
+var _ datasource.DataSource = &Hiera5HashDataSource{}
 
-		Schema: map[string]*schema.Schema{
-			"key": {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			"value": {
-				Type:     schema.TypeMap,
+type Hiera5HashDataSource struct {
+	client hiera5
+}
+
+type Hiera5HashDataSourceModel struct {
+	ID      types.String `tfsdk:"id"`
+	Key     types.String `tfsdk:"key"`
+	Value   types.Map    `tfsdk:"value"`
+	Default types.Map    `tfsdk:"default"`
+}
+
+func NewHashDataSource() datasource.DataSource {
+	return &Hiera5HashDataSource{}
+}
+
+func (hb *Hiera5HashDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = "hiera5_hash"
+}
+
+func (hb *Hiera5HashDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	hb.client = req.ProviderData.(hiera5)
+}
+
+func (hb *Hiera5HashDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
 				Computed: true,
 			},
-			"default": {
-				Type:     schema.TypeMap,
-				Optional: true,
+			"key": schema.StringAttribute{
+				Required: true,
+			},
+			"value": schema.MapAttribute{
+				Computed:    true,
+				ElementType: types.StringType,
+			},
+			"default": schema.MapAttribute{
+				Optional:    true,
+				ElementType: types.StringType,
 			},
 		},
 	}
 }
 
-func dataSourceHiera5HashRead(d *schema.ResourceData, meta interface{}) error {
-	log.Printf("[INFO] Reading hiera hash")
+func (hb *Hiera5HashDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data Hiera5HashDataSourceModel
 
-	keyName := d.Get("key").(string)
-	rawMapDefault, defaultIsSet := d.GetOk("default")
-	hiera := meta.(hiera5)
+	// Read Terraform configuration data into the model
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
-	v, err := hiera.hash(keyName)
-	if err != nil && !defaultIsSet {
-		log.Printf("[DEBUG] Error reading hiera hash %s", err)
-		return err
+	// 	rawMapDefault, defaultIsSet := d.GetOk("default")
+
+	v, err := hb.client.hash(ctx, data.Key.ValueString())
+	if err != nil && data.Default.IsNull() {
+		resp.Diagnostics.AddAttributeError(path.Root("key"),
+			"key not found",
+			"key was not found in the data and no default value was set")
+		return
 	}
 
-	d.SetId(keyName)
-	if err != nil && defaultIsSet {
-		d.Set("value", rawMapDefault.(map[string]interface{}))
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	data.ID = data.Key
+	if err != nil {
+		data.Value = data.Default
 	} else {
-		d.Set("value", v)
+		value := map[string]attr.Value{}
+		for k, v := range v {
+			value[k] = types.StringValue(v.(string))
+		}
+
+		actualValue, diag := types.MapValue(types.StringType, value)
+		resp.Diagnostics.Append(diag...)
+
+		data.Value = actualValue
 	}
 
-	return nil
+	// Save data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

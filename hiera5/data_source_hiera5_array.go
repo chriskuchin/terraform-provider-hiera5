@@ -1,70 +1,100 @@
 package hiera5
 
 import (
-	"log"
+	"context"
 
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/datasource"
+	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-func dataSourceHiera5Array() *schema.Resource {
-	return &schema.Resource{
-		Read: dataSourceHiera5ArrayRead,
+var _ datasource.DataSource = &Hiera5ArrayDataSource{}
 
-		Schema: map[string]*schema.Schema{
-			"key": {
-				Type:     schema.TypeString,
-				Required: true,
-			},
-			"value": {
-				Type: schema.TypeList,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
+type Hiera5ArrayDataSource struct {
+	client hiera5
+}
+
+type Hiera5ArrayDataSourceModel struct {
+	ID      types.String `tfsdk:"id"`
+	Key     types.String `tfsdk:"key"`
+	Value   types.List   `tfsdk:"value"`
+	Default types.List   `tfsdk:"default"`
+}
+
+func NewArrayDataSource() datasource.DataSource {
+	return &Hiera5ArrayDataSource{}
+}
+
+func (d *Hiera5ArrayDataSource) Metadata(ctx context.Context, req datasource.MetadataRequest, resp *datasource.MetadataResponse) {
+	resp.TypeName = "hiera5_array"
+}
+
+func (d *Hiera5ArrayDataSource) Configure(_ context.Context, req datasource.ConfigureRequest, _ *datasource.ConfigureResponse) {
+	if req.ProviderData == nil {
+		return
+	}
+
+	d.client = req.ProviderData.(hiera5)
+}
+
+func (d *Hiera5ArrayDataSource) Schema(ctx context.Context, req datasource.SchemaRequest, resp *datasource.SchemaResponse) {
+	resp.Schema = schema.Schema{
+		Attributes: map[string]schema.Attribute{
+			"id": schema.StringAttribute{
 				Computed: true,
 			},
-			"default": {
-				Type: schema.TypeList,
-				Elem: &schema.Schema{
-					Type: schema.TypeString,
-				},
-				Optional: true,
+			"key": schema.StringAttribute{
+				Required: true,
 			},
-			"scope": {
-				Type:     schema.TypeMap,
-				Default:  map[string]interface{}{},
-				Optional: true,
+			"value": schema.ListAttribute{
+				ElementType: types.StringType,
+				Computed:    true,
 			},
-			"merge": {
-				Type:     schema.TypeString,
-				Optional: true,
+			"default": schema.ListAttribute{
+				ElementType: types.StringType,
+				Optional:    true,
 			},
 		},
 	}
 }
 
-func dataSourceHiera5ArrayRead(d *schema.ResourceData, meta interface{}) error {
-	log.Printf("[INFO] Reading hiera array")
+func (d *Hiera5ArrayDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
+	var data Hiera5ArrayDataSourceModel
 
-	keyName := d.Get("key").(string)
-	rawList, defaultIsSet := d.GetOk("default")
-	var defaultList []string
-	if defaultIsSet {
-		defaultList = expandStringList(rawList.([]interface{}))
-	}
-	hiera := meta.(hiera5)
+	// Read Terraform configuration data into the model
+	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
-	v, err := hiera.array(keyName)
-	if err != nil && !defaultIsSet {
-		log.Printf("[DEBUG] Error reading hiera array %s", err)
-		return err
+	rawList, err := d.client.array(ctx, data.Key.String())
+	if err != nil && data.Default.IsNull() {
+		resp.Diagnostics.AddAttributeError(path.Root("key"),
+			"key not in data",
+			"When key is unavailable and a default value is not set an error is raised")
 	}
 
-	d.SetId(keyName)
-	if err != nil && defaultIsSet {
-		d.Set("value", defaultList)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	data.ID = data.Key
+	if err != nil {
+		data.Value = data.Default
 	} else {
-		d.Set("value", v)
+		listValue := []attr.Value{}
+		for _, v := range rawList {
+			listValue = append(listValue, types.StringValue(v.(string)))
+		}
+
+		result, diag := types.ListValue(types.StringType, listValue)
+		resp.Diagnostics.Append(diag...)
+		if resp.Diagnostics.HasError() {
+			return
+		}
+
+		data.Value = result
 	}
 
-	return nil
+	// Save data into Terraform state
+	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

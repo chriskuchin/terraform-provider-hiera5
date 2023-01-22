@@ -2,6 +2,7 @@ package hiera5
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -25,8 +26,8 @@ func newHiera5(config string, scope map[string]interface{}, merge string) hiera5
 	}
 }
 
-func (h *hiera5) lookup(key string, valueType string) ([]byte, error) {
-	out, err := helper.Lookup(h.Config, h.Merge, key, valueType, h.Scope)
+func (h *hiera5) lookup(ctx context.Context, key string, valueType string) ([]byte, error) {
+	out, err := helper.Lookup(ctx, h.Config, h.Merge, key, valueType, h.Scope)
 	if err == nil && string(out) == "" {
 		return out, fmt.Errorf("key '%s' not found", key)
 	}
@@ -38,13 +39,13 @@ func (h *hiera5) lookup(key string, valueType string) ([]byte, error) {
 	return out, err
 }
 
-func (h *hiera5) array(key string) ([]interface{}, error) {
+func (h *hiera5) array(ctx context.Context, key string) ([]interface{}, error) {
 	var (
 		f interface{}
 		e []interface{}
 	)
 
-	out, err := h.lookup(key, "Array")
+	out, err := h.lookup(ctx, key, "Array")
 	if err != nil {
 		return nil, err
 	}
@@ -62,12 +63,12 @@ func (h *hiera5) array(key string) ([]interface{}, error) {
 	return e, nil
 }
 
-func (h *hiera5) hash(key string) (map[string]interface{}, error) {
+func (h *hiera5) hash(ctx context.Context, key string) (map[string]interface{}, error) {
 	var f interface{}
 
 	e := make(map[string]interface{})
 
-	out, err := h.lookup(key, "Hash")
+	out, err := h.lookup(ctx, key, "Hash")
 	if err != nil {
 		return nil, err
 	}
@@ -85,10 +86,10 @@ func (h *hiera5) hash(key string) (map[string]interface{}, error) {
 	return e, nil
 }
 
-func (h *hiera5) value(key string) (string, error) {
+func (h *hiera5) value(ctx context.Context, key string) (string, error) {
 	var f interface{}
 
-	out, err := h.lookup(key, "")
+	out, err := h.lookup(ctx, key, "")
 	if err != nil {
 		return "", err
 	}
@@ -98,10 +99,10 @@ func (h *hiera5) value(key string) (string, error) {
 	return cast.ToString(f), nil
 }
 
-func (h hiera5) bool(key string) (bool, error) {
+func (h hiera5) bool(ctx context.Context, key string) (bool, error) {
 	var f interface{}
 
-	out, err := h.lookup(key, "")
+	out, err := h.lookup(ctx, key, "")
 	if err != nil {
 		return false, err
 	}
@@ -111,10 +112,10 @@ func (h hiera5) bool(key string) (bool, error) {
 	return cast.ToBool(f), nil
 }
 
-func (h *hiera5) json(key string) (string, error) {
+func (h *hiera5) json(ctx context.Context, key string) (string, error) {
 	var b bytes.Buffer
 
-	out, err := h.lookup(key, "")
+	out, err := h.lookup(ctx, key, "")
 	if err != nil {
 		return "", err
 	}
