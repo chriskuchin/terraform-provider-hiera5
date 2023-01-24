@@ -21,6 +21,7 @@ type Hiera5HashDataSourceModel struct {
 	Key     types.String `tfsdk:"key"`
 	Value   types.Map    `tfsdk:"value"`
 	Default types.Map    `tfsdk:"default"`
+	Scope   types.Map    `tfsdk:"scope"`
 }
 
 func NewHashDataSource() datasource.DataSource {
@@ -54,6 +55,7 @@ func (hb *Hiera5HashDataSource) Schema(ctx context.Context, req datasource.Schem
 				ElementType: types.StringType,
 				Description: defaultDescription,
 			},
+			"scope": scopeOverrideAttribute,
 		},
 	}
 }
@@ -64,17 +66,18 @@ func (hb *Hiera5HashDataSource) Read(ctx context.Context, req datasource.ReadReq
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
-	// 	rawMapDefault, defaultIsSet := d.GetOk("default")
+	scopeOverride, diag := processScopeOverrideAttribute(ctx, data.Scope)
 
-	v, err := hb.client.hash(ctx, data.Key.ValueString())
+	resp.Diagnostics.Append(diag...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	v, err := hb.client.hash(ctx, data.Key.ValueString(), WithScopeOverride(scopeOverride))
 	if err != nil && data.Default.IsNull() {
 		resp.Diagnostics.AddAttributeError(path.Root("key"),
 			"key not found",
 			"key was not found in the data and no default value was set")
-		return
-	}
-
-	if resp.Diagnostics.HasError() {
 		return
 	}
 
