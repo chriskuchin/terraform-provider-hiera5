@@ -32,6 +32,7 @@ locals {
 ### Optional
 
 - `default` (String) Default value to return if the value isn't found in the hiera data.
+- `scope` (Map of String) Map object defining the various hiera variables to determin how hiera merges files. If present will override the provider scope setting for this datasource only.
 
 ### Read-Only
 
