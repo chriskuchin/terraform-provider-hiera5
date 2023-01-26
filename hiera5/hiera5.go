@@ -12,10 +12,35 @@ import (
 	"github.com/chriskuchin/terraform-provider-hiera5/hiera5/helper"
 )
 
+type override func(h *hiera5) *hiera5
+
 type hiera5 struct {
 	Config string
 	Scope  map[string]interface{}
 	Merge  string
+}
+
+func WithScopeOverride(scope map[string]interface{}) override {
+	return func(h *hiera5) *hiera5 {
+		if scope == nil {
+			return h
+		}
+
+		return &hiera5{
+			Config: h.Config,
+			Scope:  scope,
+			Merge:  h.Merge,
+		}
+	}
+}
+
+func handleOverrides(h *hiera5, opts ...override) *hiera5 {
+	override := h
+	for _, opt := range opts {
+		override = opt(override)
+	}
+
+	return override
 }
 
 func newHiera5(config string, scope map[string]interface{}, merge string) hiera5 {
@@ -39,13 +64,13 @@ func (h *hiera5) lookup(ctx context.Context, key string, valueType string) ([]by
 	return out, err
 }
 
-func (h *hiera5) array(ctx context.Context, key string) ([]interface{}, error) {
+func (h *hiera5) array(ctx context.Context, key string, opts ...override) ([]interface{}, error) {
 	var (
 		f interface{}
 		e []interface{}
 	)
 
-	out, err := h.lookup(ctx, key, "Array")
+	out, err := handleOverrides(h, opts...).lookup(ctx, key, "Array")
 	if err != nil {
 		return nil, err
 	}
@@ -63,12 +88,12 @@ func (h *hiera5) array(ctx context.Context, key string) ([]interface{}, error) {
 	return e, nil
 }
 
-func (h *hiera5) hash(ctx context.Context, key string) (map[string]interface{}, error) {
+func (h *hiera5) hash(ctx context.Context, key string, opts ...override) (map[string]interface{}, error) {
 	var f interface{}
 
 	e := make(map[string]interface{})
 
-	out, err := h.lookup(ctx, key, "Hash")
+	out, err := handleOverrides(h, opts...).lookup(ctx, key, "Hash")
 	if err != nil {
 		return nil, err
 	}
@@ -86,10 +111,10 @@ func (h *hiera5) hash(ctx context.Context, key string) (map[string]interface{}, 
 	return e, nil
 }
 
-func (h *hiera5) value(ctx context.Context, key string) (string, error) {
+func (h *hiera5) value(ctx context.Context, key string, opts ...override) (string, error) {
 	var f interface{}
 
-	out, err := h.lookup(ctx, key, "")
+	out, err := handleOverrides(h, opts...).lookup(ctx, key, "")
 	if err != nil {
 		return "", err
 	}
@@ -99,10 +124,10 @@ func (h *hiera5) value(ctx context.Context, key string) (string, error) {
 	return cast.ToString(f), nil
 }
 
-func (h hiera5) bool(ctx context.Context, key string) (bool, error) {
+func (h *hiera5) bool(ctx context.Context, key string, opts ...override) (bool, error) {
 	var f interface{}
 
-	out, err := h.lookup(ctx, key, "")
+	out, err := handleOverrides(h, opts...).lookup(ctx, key, "")
 	if err != nil {
 		return false, err
 	}
@@ -112,10 +137,10 @@ func (h hiera5) bool(ctx context.Context, key string) (bool, error) {
 	return cast.ToBool(f), nil
 }
 
-func (h *hiera5) json(ctx context.Context, key string) (string, error) {
+func (h *hiera5) json(ctx context.Context, key string, opts ...override) (string, error) {
 	var b bytes.Buffer
 
-	out, err := h.lookup(ctx, key, "")
+	out, err := handleOverrides(h, opts...).lookup(ctx, key, "")
 	if err != nil {
 		return "", err
 	}

@@ -21,6 +21,7 @@ type Hiera5ArrayDataSourceModel struct {
 	Key     types.String `tfsdk:"key"`
 	Value   types.List   `tfsdk:"value"`
 	Default types.List   `tfsdk:"default"`
+	Scope   types.Map    `tfsdk:"scope"`
 }
 
 func NewArrayDataSource() datasource.DataSource {
@@ -54,6 +55,7 @@ func (d *Hiera5ArrayDataSource) Schema(ctx context.Context, req datasource.Schem
 				Optional:    true,
 				Description: defaultDescription,
 			},
+			"scope": scopeOverrideAttribute,
 		},
 	}
 }
@@ -64,7 +66,14 @@ func (d *Hiera5ArrayDataSource) Read(ctx context.Context, req datasource.ReadReq
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
-	rawList, err := d.client.array(ctx, data.Key.String())
+	scopeOverride, diag := processScopeOverrideAttribute(ctx, data.Scope)
+
+	resp.Diagnostics.Append(diag...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	rawList, err := d.client.array(ctx, data.Key.String(), WithScopeOverride(scopeOverride))
 	if err != nil && data.Default.IsNull() {
 		resp.Diagnostics.AddAttributeError(path.Root("key"),
 			"key not in data",

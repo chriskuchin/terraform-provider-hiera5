@@ -21,6 +21,7 @@ type Hiera5JSONDataSourceModel struct {
 	Key     types.String `tfsdk:"key"`
 	Value   types.String `tfsdk:"value"`
 	Default types.String `tfsdk:"default"`
+	Scope   types.Map    `tfsdk:"scope"`
 }
 
 func NewJSONDataSource() datasource.DataSource {
@@ -52,6 +53,7 @@ func (hb *Hiera5JSONDataSource) Schema(ctx context.Context, req datasource.Schem
 				Optional:    true,
 				Description: defaultDescription,
 			},
+			"scope": scopeOverrideAttribute,
 		},
 	}
 }
@@ -64,7 +66,14 @@ func (hb *Hiera5JSONDataSource) Read(ctx context.Context, req datasource.ReadReq
 
 	validDefault := !data.Default.IsNull() && json.Valid([]byte(data.Default.ValueString()))
 
-	v, err := hb.client.json(ctx, data.Key.ValueString())
+	scopeOverride, diag := processScopeOverrideAttribute(ctx, data.Scope)
+
+	resp.Diagnostics.Append(diag...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	v, err := hb.client.json(ctx, data.Key.ValueString(), WithScopeOverride(scopeOverride))
 	if err != nil && !validDefault {
 		resp.Diagnostics.AddAttributeError(path.Root("key"),
 			"key not found",

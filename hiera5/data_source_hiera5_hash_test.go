@@ -1,143 +1,116 @@
 package hiera5
 
 import (
-	"fmt"
 	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestAccDataSourceHiera5Hash_Basic(t *testing.T) {
-	key := "aws_tags"
-
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		IsUnitTest:               true,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataSourceHiera5HashConfig(key),
+				Config: providerConfig + `
+					data "hiera5_hash" "sut" {
+						key = "aws_tags"
+					}`,
 				Check: resource.ComposeTestCheckFunc(
-					testAccDataSourceHiera5HashCheck(key),
-				),
-			},
-			{
-				Config: testAccDataSourceHiera5HashConfig(keyUnavailable),
-				Check: resource.ComposeTestCheckFunc(
-					testAccDataSourceHiera5HashCheck(keyUnavailable),
-				),
-				ExpectError: regexp.MustCompile(".*"),
-			},
-			{
-				Config: testAccDataSourceHiera5HashConfig(key),
-				Check: resource.ComposeTestCheckFunc(
-					testAccDataSourceHiera5DefaultHashCheck("default"),
+					resource.TestCheckResourceAttr("data.hiera5_hash.sut", "value.%", "2"),
+					resource.TestCheckResourceAttr("data.hiera5_hash.sut", "value.tier", "1"),
+					resource.TestCheckResourceAttr("data.hiera5_hash.sut", "value.team", "A"),
+					resource.TestCheckResourceAttrSet("data.hiera5_hash.sut", "id"),
 				),
 			},
 		},
 	})
 }
 
-func testAccDataSourceHiera5HashCheck(key string) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		name := fmt.Sprintf("data.hiera5_hash.%s", key)
-
-		rs, ok := s.RootModule().Resources[name]
-		if !ok {
-			return fmt.Errorf("root module has no resource called %s", name)
-		}
-
-		attr := rs.Primary.Attributes
-		if attr["id"] != key {
-			return fmt.Errorf(
-				"id is %s; want %s",
-				attr["id"],
-				key,
-			)
-		}
-
-		if attr["value.tier"] != "1" {
-			return fmt.Errorf(
-				"value.tier is %s; want %s",
-				attr["value.tier"],
-				"1",
-			)
-		}
-
-		if attr["value.team"] != "A" {
-			return fmt.Errorf(
-				"value.team is %s; want %s",
-				attr["value.team"],
-				"A",
-			)
-		}
-
-		return nil
-	}
+func TestAccDataSourceHiera5Hash_Default_Found(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		IsUnitTest:               true,
+		Steps: []resource.TestStep{
+			{
+				Config: providerConfig + `
+					data "hiera5_hash" "sut" {
+						key = "aws_tags"
+						default = {
+							"service" = "unknown"
+						}
+					}`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("data.hiera5_hash.sut", "value.%", "2"),
+					resource.TestCheckResourceAttr("data.hiera5_hash.sut", "value.tier", "1"),
+					resource.TestCheckResourceAttr("data.hiera5_hash.sut", "value.team", "A"),
+					resource.TestCheckResourceAttrSet("data.hiera5_hash.sut", "id"),
+				),
+			},
+		},
+	})
 }
 
-func testAccDataSourceHiera5DefaultHashCheck(key string) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		name := fmt.Sprintf("data.hiera5_hash.%s", key)
-
-		rs, ok := s.RootModule().Resources[name]
-		if !ok {
-			return fmt.Errorf("root module has no resource called %s", name)
-		}
-
-		attr := rs.Primary.Attributes
-		if attr["id"] != key {
-			return fmt.Errorf(
-				"id is %s; want %s",
-				attr["id"],
-				key,
-			)
-		}
-
-		if attr["value.tier"] != "10" {
-			return fmt.Errorf(
-				"value.tier is %s; want %s",
-				attr["value.tier"],
-				"10",
-			)
-		}
-
-		if attr["value.team"] != "B" {
-			return fmt.Errorf(
-				"value.team is %s; want %s",
-				attr["value.team"],
-				"B",
-			)
-		}
-
-		return nil
-	}
+func TestAccDataSourceHiera5Hash_Default_NotFound(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		IsUnitTest:               true,
+		Steps: []resource.TestStep{
+			{
+				Config: providerConfig + `
+					data "hiera5_hash" "sut" {
+						key = "gcp_tags"
+						default = {
+							"service" = "unknown"
+						}
+					}`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("data.hiera5_hash.sut", "value.%", "1"),
+					resource.TestCheckResourceAttr("data.hiera5_hash.sut", "value.service", "unknown"),
+					resource.TestCheckResourceAttrSet("data.hiera5_hash.sut", "id"),
+				),
+			},
+		},
+	})
 }
 
-func testAccDataSourceHiera5HashConfig(key string) string {
-	return fmt.Sprintf(`
-		provider "hiera5" {
-			alias = "sut"
-			config = "test-fixtures/hiera.yaml"
-			scope = {
-				environment = "live"
-				service     = "api"
-			}
-		        merge = "deep"
-		}
+func TestAccDataSourceHiera5Hash_NotFound(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		IsUnitTest:               true,
+		Steps: []resource.TestStep{
+			{
+				Config: providerConfig + `
+					data "hiera5_hash" "sut" {
+						key = "gcp_tags"
+					}`,
+				ExpectError: regexp.MustCompile(".*"),
+			},
+		},
+	})
+}
 
-		data "hiera5_hash" "%s" {
-		  provider = "hiera5.sut"
-		  key = "%s"
-		}
-
-		data "hiera5_hash" "default" {
-			provider = "hiera5.sut"
-			key = "default"
-			default = {
-				tier = "10"
-				"team" = "B"
-			}
-		}
-		`, key, key)
+func TestAccDataSourceHiera5Hash_ScopeOverride(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		IsUnitTest:               true,
+		Steps: []resource.TestStep{
+			{
+				Config: providerConfig + `
+					data "hiera5_hash" "sut" {
+						key = "aws_tags"
+						scope = {
+							"service" = "api"
+							"environment" = "stage"
+						}
+					}`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("data.hiera5_hash.sut", "value.%", "1"),
+					resource.TestCheckResourceAttr("data.hiera5_hash.sut", "value.team", "A"),
+					resource.TestCheckResourceAttrSet("data.hiera5_hash.sut", "id"),
+				),
+			},
+		},
+	})
 }

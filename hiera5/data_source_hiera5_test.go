@@ -1,124 +1,106 @@
 package hiera5
 
 import (
-	"fmt"
 	"regexp"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestAccDataSourceHiera5_Basic(t *testing.T) {
-	key := "aws_instance_size"
-
 	resource.Test(t, resource.TestCase{
 		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		IsUnitTest:               true,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccDataSourceHiera5Config(key),
+				Config: providerConfig + `
+					data "hiera5" "sut" {
+						key = "aws_instance_size"
+					}`,
 				Check: resource.ComposeTestCheckFunc(
-					testAccDataSourceHiera5Check(key),
-				),
-			},
-			{
-				Config: testAccDataSourceHiera5Config(keyUnavailable),
-				Check: resource.ComposeTestCheckFunc(
-					testAccDataSourceHiera5Check(keyUnavailable),
-				),
-				ExpectError: regexp.MustCompile(".*"),
-			},
-			{
-				Config: testAccDataSourceHiera5Config(key),
-				Check: resource.ComposeTestCheckFunc(
-					testAccDataSourceHiera5DefaultValueCheck("default"),
+					resource.TestCheckResourceAttr("data.hiera5.sut", "value", "t2.large"),
+					resource.TestCheckResourceAttrSet("data.hiera5.sut", "id"),
 				),
 			},
 		},
 	})
 }
 
-func testAccDataSourceHiera5Check(key string) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		name := fmt.Sprintf("data.hiera5.%s", key)
-
-		rs, ok := s.RootModule().Resources[name]
-		if !ok {
-			return fmt.Errorf("root module has no resource called %s", name)
-		}
-
-		attr := rs.Primary.Attributes
-		if attr["id"] != key {
-			return fmt.Errorf(
-				"id is %s; want %s",
-				attr["id"],
-				key,
-			)
-		}
-
-		if attr["value"] != "t2.large" {
-			return fmt.Errorf(
-				"value is %s; want %s",
-				attr["value"],
-				"t2.large",
-			)
-		}
-
-		return nil
-	}
+func TestAccDataSourceHiera5_Default_Found(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		IsUnitTest:               true,
+		Steps: []resource.TestStep{
+			{
+				Config: providerConfig + `
+					data "hiera5" "sut" {
+						key = "aws_instance_size"
+						default = "t3.large"
+					}`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("data.hiera5.sut", "value", "t2.large"),
+					resource.TestCheckResourceAttrSet("data.hiera5.sut", "id"),
+				),
+			},
+		},
+	})
 }
 
-func testAccDataSourceHiera5DefaultValueCheck(key string) resource.TestCheckFunc {
-	return func(s *terraform.State) error {
-		name := fmt.Sprintf("data.hiera5.%s", key)
-
-		rs, ok := s.RootModule().Resources[name]
-		if !ok {
-			return fmt.Errorf("root module has no resource called %s", name)
-		}
-
-		attr := rs.Primary.Attributes
-		if attr["id"] != key {
-			return fmt.Errorf(
-				"id is %s; want %s",
-				attr["id"],
-				key,
-			)
-		}
-
-		if attr["value"] != "default_value" {
-			return fmt.Errorf(
-				"value is %s; want %s",
-				attr["value"],
-				"default_value",
-			)
-		}
-
-		return nil
-	}
+func TestAccDataSourceHiera5_Default_NotFound(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		IsUnitTest:               true,
+		Steps: []resource.TestStep{
+			{
+				Config: providerConfig + `
+					data "hiera5" "sut" {
+						key = "gcp_instance_size"
+						default = "t3.large"
+					}`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("data.hiera5.sut", "value", "t3.large"),
+					resource.TestCheckResourceAttrSet("data.hiera5.sut", "id"),
+				),
+			},
+		},
+	})
 }
 
-func testAccDataSourceHiera5Config(key string) string {
-	return fmt.Sprintf(`
-		provider "hiera5" {
-			alias = "sut"
-			config = "test-fixtures/hiera.yaml"
-			scope = {
-				environment = "live"
-				service     = "api"
-			}
-		        merge = "deep"
-		}
+func TestAccDataSourceHiera5_NotFound(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		IsUnitTest:               true,
+		Steps: []resource.TestStep{
+			{
+				Config: providerConfig + `
+					data "hiera5" "sut" {
+						key = "gcp_instance_size"
+					}`,
+				ExpectError: regexp.MustCompile(".*"),
+			},
+		},
+	})
+}
 
-		data "hiera5" "%s" {
-		  provider = "hiera5.sut"
-		  key = "%s"
-		}
-
-		data "hiera5" "default" {
-			provider = "hiera5.sut"
-			key = "default"
-			default = "default_value"
-		}
-		`, key, key)
+func TestAccDataSourceHiera5_ScopeOverride(t *testing.T) {
+	resource.Test(t, resource.TestCase{
+		ProtoV6ProviderFactories: testAccProtoV6ProviderFactories,
+		IsUnitTest:               true,
+		Steps: []resource.TestStep{
+			{
+				Config: providerConfig + `
+					data "hiera5" "sut" {
+						key = "aws_instance_size"
+						scope = {
+							"service" = "worker"
+							"environment" = "live"
+						}
+					}`,
+				Check: resource.ComposeTestCheckFunc(
+					resource.TestCheckResourceAttr("data.hiera5.sut", "value", "t2.micro"),
+					resource.TestCheckResourceAttrSet("data.hiera5.sut", "id"),
+				),
+			},
+		},
+	})
 }

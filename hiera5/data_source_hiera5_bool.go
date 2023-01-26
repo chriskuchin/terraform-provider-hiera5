@@ -20,6 +20,7 @@ type Hiera5BoolDataSourceModel struct {
 	Key     types.String `tfsdk:"key"`
 	Value   types.Bool   `tfsdk:"value"`
 	Default types.Bool   `tfsdk:"default"`
+	Scope   types.Map    `tfsdk:"scope"`
 }
 
 func NewBoolDataSource() datasource.DataSource {
@@ -51,6 +52,7 @@ func (hb *Hiera5BoolDataSource) Schema(ctx context.Context, req datasource.Schem
 				Computed:    true,
 				Description: valueDescription,
 			},
+			"scope": scopeOverrideAttribute,
 		},
 	}
 }
@@ -61,15 +63,18 @@ func (hb *Hiera5BoolDataSource) Read(ctx context.Context, req datasource.ReadReq
 	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
-	v, err := hb.client.bool(ctx, data.Key.ValueString())
+	scopeOverride, diag := processScopeOverrideAttribute(ctx, data.Scope)
+
+	resp.Diagnostics.Append(diag...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	v, err := hb.client.bool(ctx, data.Key.ValueString(), WithScopeOverride(scopeOverride))
 	if err != nil && data.Default.IsNull() {
 		resp.Diagnostics.AddAttributeError(path.Root("key"),
 			"Key not found",
 			"The key was not found in the data and the default value was not set")
-		return
-	}
-
-	if resp.Diagnostics.HasError() {
 		return
 	}
 
