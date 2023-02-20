@@ -1,6 +1,6 @@
 # Terraform Hiera 5 Provider
 
-[![pipeline status](https://gitlab.com/sbitio/terraform-provider-hiera5/badges/master/pipeline.svg)](https://gitlab.com/sbitio/terraform-provider-hiera5/-/commits/master) [![coverage report](https://gitlab.com/sbitio/terraform-provider-hiera5/badges/master/coverage.svg)](https://gitlab.com/sbitio/terraform-provider-hiera5/-/commits/master) [![Go Report Card](https://goreportcard.com/badge/gitlab.com/sbitio/terraform-provider-hiera5)](https://goreportcard.com/report/sbitio/terraform-provider-hiera5)
+[![Go Report Card](https://goreportcard.com/badge/github.com/chriskuchin/terraform-provider-hiera5)](https://goreportcard.com/report/github.com/chriskuchin/terraform-provider-hiera5)
 
 This provider implements data sources that can be used to perform hierachical data lookups with Hiera.
 
