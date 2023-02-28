@@ -3,7 +3,7 @@ module github.com/chriskuchin/terraform-provider-hiera5
 go 1.19
 
 require (
-	github.com/hashicorp/terraform-plugin-docs v0.13.0
+	github.com/hashicorp/terraform-plugin-docs v0.14.0
 	github.com/hashicorp/terraform-plugin-framework v1.1.1
 	github.com/hashicorp/terraform-plugin-go v0.14.3
 	github.com/hashicorp/terraform-plugin-log v0.8.0
@@ -48,7 +48,7 @@ require (
 	github.com/hashicorp/go-version v1.6.0 // indirect
 	github.com/hashicorp/hcl/v2 v2.16.1 // indirect
 	github.com/hashicorp/logutils v1.0.0 // indirect
-	github.com/hashicorp/terraform-exec v0.17.3 // indirect
+	github.com/hashicorp/terraform-exec v0.18.0 // indirect
 	github.com/hashicorp/terraform-json v0.15.0 // indirect
 	github.com/hashicorp/terraform-plugin-sdk/v2 v2.25.0
 	github.com/hashicorp/yamux v0.1.1 // indirect
@@ -67,7 +67,7 @@ require (
 	github.com/posener/complete v1.2.3 // indirect
 	github.com/russross/blackfriday v1.6.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
-	github.com/zclconf/go-cty v1.12.1 // indirect
+	github.com/zclconf/go-cty v1.13.0 // indirect
 	golang.org/x/crypto v0.6.0 // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect

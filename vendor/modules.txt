@@ -101,15 +101,15 @@ github.com/hashicorp/hcl/v2/hclsyntax
 # github.com/hashicorp/logutils v1.0.0
 ## explicit
 github.com/hashicorp/logutils
-# github.com/hashicorp/terraform-exec v0.17.3
+# github.com/hashicorp/terraform-exec v0.18.0
 ## explicit; go 1.18
 github.com/hashicorp/terraform-exec/internal/version
 github.com/hashicorp/terraform-exec/tfexec
 # github.com/hashicorp/terraform-json v0.15.0
 ## explicit; go 1.13
 github.com/hashicorp/terraform-json
-# github.com/hashicorp/terraform-plugin-docs v0.13.0
-## explicit; go 1.17
+# github.com/hashicorp/terraform-plugin-docs v0.14.0
+## explicit; go 1.18
 github.com/hashicorp/terraform-plugin-docs/cmd/tfplugindocs
 github.com/hashicorp/terraform-plugin-docs/internal/cmd
 github.com/hashicorp/terraform-plugin-docs/internal/mdplain
@@ -294,10 +294,11 @@ github.com/vmihailenco/msgpack/v4/codes
 github.com/vmihailenco/tagparser
 github.com/vmihailenco/tagparser/internal
 github.com/vmihailenco/tagparser/internal/parser
-# github.com/zclconf/go-cty v1.12.1
+# github.com/zclconf/go-cty v1.13.0
 ## explicit; go 1.18
 github.com/zclconf/go-cty/cty
 github.com/zclconf/go-cty/cty/convert
+github.com/zclconf/go-cty/cty/ctystrings
 github.com/zclconf/go-cty/cty/function
 github.com/zclconf/go-cty/cty/function/stdlib
 github.com/zclconf/go-cty/cty/gocty
