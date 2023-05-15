@@ -10,7 +10,7 @@ require (
 	github.com/lyraproj/dgo v0.4.4
 	github.com/lyraproj/hiera v0.4.6
 	github.com/lyraproj/hierasdk v0.4.4
-	github.com/spf13/cast v1.5.0
+	github.com/spf13/cast v1.5.1
 )
 
 require (
