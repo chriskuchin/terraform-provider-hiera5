@@ -150,7 +150,7 @@ github.com/hashicorp/terraform-plugin-docs/internal/mdplain
 github.com/hashicorp/terraform-plugin-docs/internal/provider
 github.com/hashicorp/terraform-plugin-docs/internal/tmplfuncs
 github.com/hashicorp/terraform-plugin-docs/schemamd
-# github.com/hashicorp/terraform-plugin-framework v1.2.0
+# github.com/hashicorp/terraform-plugin-framework v1.3.0
 ## explicit; go 1.19
 github.com/hashicorp/terraform-plugin-framework/attr
 github.com/hashicorp/terraform-plugin-framework/attr/xattr
