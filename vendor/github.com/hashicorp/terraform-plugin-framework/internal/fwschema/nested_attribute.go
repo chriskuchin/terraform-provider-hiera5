@@ -17,3 +17,18 @@ type NestedAttribute interface {
 	// does not represent nested attributes.
 	GetNestingMode() NestingMode
 }
+
+// NestedAttributesEqual is a helper function to perform equality testing on two
+// NestedAttribute. NestedAttribute Equal implementations should still compare
+// the concrete types in addition to using this helper.
+func NestedAttributesEqual(a, b NestedAttribute) bool {
+	if !AttributesEqual(a, b) {
+		return false
+	}
+
+	if a.GetNestingMode() != b.GetNestingMode() {
+		return false
+	}
+
+	return a.GetNestedObject().Equal(b.GetNestedObject())
+}
