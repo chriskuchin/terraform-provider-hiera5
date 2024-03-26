@@ -7,12 +7,16 @@ import (
 	"context"
 
 	"github.com/hashicorp/terraform-plugin-framework/attr"
-	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/internal/fwfunction"
+	"github.com/hashicorp/terraform-plugin-framework/internal/fwtype"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 // Ensure the implementation satisifies the desired interfaces.
-var _ Return = ObjectReturn{}
+var (
+	_ Return                                      = ObjectReturn{}
+	_ fwfunction.ReturnWithValidateImplementation = ObjectReturn{}
+)
 
 // ObjectReturn represents a function return that is mapping of defined
 // attribute names to values. When setting the value for this return, use
@@ -21,6 +25,10 @@ var _ Return = ObjectReturn{}
 type ObjectReturn struct {
 	// AttributeTypes is the mapping of underlying attribute names to attribute
 	// types. This field must be set.
+	//
+	// Attribute types that contain a collection with a nested dynamic type (i.e. types.List[types.Dynamic]) are not supported.
+	// If underlying dynamic collection values are required, replace this return definition with
+	// DynamicReturn instead.
 	AttributeTypes map[string]attr.Type
 
 	// CustomType enables the use of a custom data type in place of the
@@ -42,7 +50,7 @@ func (r ObjectReturn) GetType() attr.Type {
 }
 
 // NewResultData returns a new result data based on the type.
-func (r ObjectReturn) NewResultData(ctx context.Context) (ResultData, diag.Diagnostics) {
+func (r ObjectReturn) NewResultData(ctx context.Context) (ResultData, *FuncError) {
 	value := basetypes.NewObjectUnknown(r.AttributeTypes)
 
 	if r.CustomType == nil {
@@ -51,5 +59,15 @@ func (r ObjectReturn) NewResultData(ctx context.Context) (ResultData, diag.Diagn
 
 	valuable, diags := r.CustomType.ValueFromObject(ctx, value)
 
-	return NewResultData(valuable), diags
+	return NewResultData(valuable), FuncErrorFromDiags(ctx, diags)
+}
+
+// ValidateImplementation contains logic for validating the
+// provider-defined implementation of the Return to prevent unexpected
+// errors or panics. This logic runs during the GetProviderSchema RPC and
+// should never include false positives.
+func (p ObjectReturn) ValidateImplementation(ctx context.Context, req fwfunction.ValidateReturnImplementationRequest, resp *fwfunction.ValidateReturnImplementationResponse) {
+	if p.CustomType == nil && fwtype.ContainsCollectionWithDynamic(p.GetType()) {
+		resp.Diagnostics.Append(fwtype.ReturnCollectionWithDynamicTypeDiag())
+	}
 }
