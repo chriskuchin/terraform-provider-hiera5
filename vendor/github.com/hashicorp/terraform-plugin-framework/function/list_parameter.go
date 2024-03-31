@@ -4,12 +4,20 @@
 package function
 
 import (
+	"context"
+
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/internal/fwfunction"
+	"github.com/hashicorp/terraform-plugin-framework/internal/fwtype"
 	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 // Ensure the implementation satisifies the desired interfaces.
-var _ Parameter = ListParameter{}
+var (
+	_ Parameter                                      = ListParameter{}
+	_ fwfunction.ParameterWithValidateImplementation = ListParameter{}
+)
 
 // ListParameter represents a function parameter that is an ordered list of a
 // single element type. Either the ElementType or CustomType field must be set.
@@ -27,6 +35,10 @@ var _ Parameter = ListParameter{}
 type ListParameter struct {
 	// ElementType is the type for all elements of the list. This field must be
 	// set.
+	//
+	// Element types that contain a dynamic type (i.e. types.Dynamic) are not supported.
+	// If underlying dynamic values are required, replace this parameter definition with
+	// DynamicParameter instead.
 	ElementType attr.Type
 
 	// AllowNullValue when enabled denotes that a null argument value can be
@@ -60,8 +72,11 @@ type ListParameter struct {
 
 	// Name is a short usage name for the parameter, such as "data". This name
 	// is used in documentation, such as generating a function signature,
-	// however its usage may be extended in the future. If no name is provided,
-	// this will default to "param".
+	// however its usage may be extended in the future.
+	//
+	// If no name is provided, this will default to "param" with a suffix of the
+	// position the parameter is in the function definition. ("param1", "param2", etc.)
+	// If the parameter is variadic, the default name will be "varparam".
 	//
 	// This must be a valid Terraform identifier, such as starting with an
 	// alphabetical character and followed by alphanumeric or underscore
@@ -91,11 +106,7 @@ func (p ListParameter) GetMarkdownDescription() string {
 
 // GetName returns the parameter name.
 func (p ListParameter) GetName() string {
-	if p.Name != "" {
-		return p.Name
-	}
-
-	return DefaultParameterName
+	return p.Name
 }
 
 // GetType returns the parameter data type.
@@ -106,5 +117,22 @@ func (p ListParameter) GetType() attr.Type {
 
 	return basetypes.ListType{
 		ElemType: p.ElementType,
+	}
+}
+
+// ValidateImplementation contains logic for validating the
+// provider-defined implementation of the parameter to prevent unexpected
+// errors or panics. This logic runs during the GetProviderSchema RPC and
+// should never include false positives.
+func (p ListParameter) ValidateImplementation(ctx context.Context, req fwfunction.ValidateParameterImplementationRequest, resp *fwfunction.ValidateParameterImplementationResponse) {
+	if p.CustomType == nil && fwtype.ContainsCollectionWithDynamic(p.GetType()) {
+		var diag diag.Diagnostic
+		if req.ParameterPosition != nil {
+			diag = fwtype.ParameterCollectionWithDynamicTypeDiag(*req.ParameterPosition, req.Name)
+		} else {
+			diag = fwtype.VariadicParameterCollectionWithDynamicTypeDiag(req.Name)
+		}
+
+		resp.Diagnostics.Append(diag)
 	}
 }
