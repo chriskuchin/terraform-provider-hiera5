@@ -201,7 +201,7 @@ github.com/hashicorp/terraform-plugin-framework/schema/validator
 github.com/hashicorp/terraform-plugin-framework/tfsdk
 github.com/hashicorp/terraform-plugin-framework/types
 github.com/hashicorp/terraform-plugin-framework/types/basetypes
-# github.com/hashicorp/terraform-plugin-go v0.22.1
+# github.com/hashicorp/terraform-plugin-go v0.22.2
 ## explicit; go 1.21
 github.com/hashicorp/terraform-plugin-go/internal/logging
 github.com/hashicorp/terraform-plugin-go/tfprotov5
@@ -457,7 +457,7 @@ google.golang.org/appengine/internal/remote_api
 # google.golang.org/genproto/googleapis/rpc v0.0.0-20240325203815-454cdb8f5daa
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.62.1
+# google.golang.org/grpc v1.63.2
 ## explicit; go 1.19
 google.golang.org/grpc
 google.golang.org/grpc/attributes
