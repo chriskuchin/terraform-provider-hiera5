@@ -10,6 +10,7 @@ import (
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
+	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	"github.com/hashicorp/terraform-plugin-framework/function"
 	"github.com/hashicorp/terraform-plugin-framework/internal/fwschema"
 	"github.com/hashicorp/terraform-plugin-framework/internal/logging"
@@ -33,6 +34,11 @@ type Server struct {
 	// to [resource.ConfigureRequest.ProviderData].
 	ResourceConfigureData any
 
+	// EphemeralResourceConfigureData is the
+	// [provider.ConfigureResponse.EphemeralResourceData] field value which is passed
+	// to [ephemeral.ConfigureRequest.ProviderData].
+	EphemeralResourceConfigureData any
+
 	// dataSourceSchemas is the cached DataSource Schemas for RPCs that need to
 	// convert configuration data from the protocol. If not found, it will be
 	// fetched from the DataSourceType.GetSchema() method.
@@ -55,6 +61,29 @@ type Server struct {
 	// dataSourceTypesMutex is a mutex to protect concurrent dataSourceTypes
 	// access from race conditions.
 	dataSourceTypesMutex sync.Mutex
+
+	// ephemeralResourceSchemas is the cached EphemeralResource Schemas for RPCs that need to
+	// convert configuration data from the protocol. If not found, it will be
+	// fetched from the EphemeralResourceType.GetSchema() method.
+	ephemeralResourceSchemas map[string]fwschema.Schema
+
+	// ephemeralResourceSchemasMutex is a mutex to protect concurrent ephemeralResourceSchemas
+	// access from race conditions.
+	ephemeralResourceSchemasMutex sync.RWMutex
+
+	// ephemeralResourceFuncs is the cached EphemeralResource functions for RPCs that need to
+	// access ephemeral resources. If not found, it will be fetched from the
+	// Provider.EphemeralResources() method.
+	ephemeralResourceFuncs map[string]func() ephemeral.EphemeralResource
+
+	// ephemeralResourceFuncsDiags is the cached Diagnostics obtained while populating
+	// ephemeralResourceFuncs. This is to ensure any warnings or errors are also
+	// returned appropriately when fetching ephemeralResourceFuncs.
+	ephemeralResourceFuncsDiags diag.Diagnostics
+
+	// ephemeralResourceFuncsMutex is a mutex to protect concurrent ephemeralResourceFuncs
+	// access from race conditions.
+	ephemeralResourceFuncsMutex sync.Mutex
 
 	// deferred indicates an automatic provider deferral. When this is set,
 	// the provider will automatically defer the PlanResourceChange, ReadResource,
@@ -128,6 +157,15 @@ type Server struct {
 	// resourceSchemasMutex is a mutex to protect concurrent resourceSchemas
 	// access from race conditions.
 	resourceSchemasMutex sync.RWMutex
+
+	// resourceIdentitySchemas is the cached Resource Identity Schemas for RPCs that need to
+	// convert resource identity data from the protocol. If not found, it will be
+	// fetched from the Resource IdentitySchema method.
+	resourceIdentitySchemas map[string]fwschema.Schema
+
+	// resourceIdentitySchemasMutex is a mutex to protect concurrent resourceIdentitySchemas
+	// access from race conditions.
+	resourceIdentitySchemasMutex sync.RWMutex
 
 	// resourceFuncs is the cached Resource functions for RPCs that need to
 	// access resources. If not found, it will be fetched from the
@@ -659,4 +697,110 @@ func (s *Server) ResourceSchemas(ctx context.Context) (map[string]fwschema.Schem
 	}
 
 	return resourceSchemas, diags
+}
+
+// ResourceIdentitySchema returns the Resource Identity Schema for the given type name and
+// caches the result for later Identity operations. Identity is an optional feature for resources,
+// so this function will return a nil schema with no diagnostics if the resource type doesn't define
+// an identity schema.
+func (s *Server) ResourceIdentitySchema(ctx context.Context, typeName string) (fwschema.Schema, diag.Diagnostics) {
+	s.resourceIdentitySchemasMutex.RLock()
+	resourceIdentitySchema, ok := s.resourceIdentitySchemas[typeName]
+	s.resourceIdentitySchemasMutex.RUnlock()
+
+	if ok {
+		return resourceIdentitySchema, nil
+	}
+
+	var diags diag.Diagnostics
+
+	r, resourceDiags := s.Resource(ctx, typeName)
+
+	diags.Append(resourceDiags...)
+
+	if diags.HasError() {
+		return nil, diags
+	}
+
+	resourceWithIdentity, ok := r.(resource.ResourceWithIdentity)
+	if !ok {
+		// It's valid for a resource to not have an identity, so cache and return a nil schema
+		s.resourceIdentitySchemasMutex.Lock()
+		if s.resourceIdentitySchemas == nil {
+			s.resourceIdentitySchemas = make(map[string]fwschema.Schema)
+		}
+
+		s.resourceIdentitySchemas[typeName] = nil
+		s.resourceIdentitySchemasMutex.Unlock()
+
+		return nil, nil
+	}
+
+	identitySchemaReq := resource.IdentitySchemaRequest{}
+	identitySchemaResp := resource.IdentitySchemaResponse{}
+
+	logging.FrameworkTrace(ctx, "Calling provider defined Resource IdentitySchema method", map[string]interface{}{logging.KeyResourceType: typeName})
+	resourceWithIdentity.IdentitySchema(ctx, identitySchemaReq, &identitySchemaResp)
+	logging.FrameworkTrace(ctx, "Called provider defined Resource IdentitySchema method", map[string]interface{}{logging.KeyResourceType: typeName})
+
+	diags.Append(identitySchemaResp.Diagnostics...)
+
+	if diags.HasError() {
+		return identitySchemaResp.IdentitySchema, diags
+	}
+
+	s.resourceIdentitySchemasMutex.Lock()
+	if s.resourceIdentitySchemas == nil {
+		s.resourceIdentitySchemas = make(map[string]fwschema.Schema)
+	}
+
+	s.resourceIdentitySchemas[typeName] = identitySchemaResp.IdentitySchema
+	s.resourceIdentitySchemasMutex.Unlock()
+
+	return identitySchemaResp.IdentitySchema, diags
+}
+
+// ResourceIdentitySchemas returns a map of Resource Identity Schemas for the
+// GetResourceIdentitySchemas RPC without caching since not all schemas are guaranteed to
+// be necessary for later provider operations. The schema implementations are
+// also validated.
+func (s *Server) ResourceIdentitySchemas(ctx context.Context) (map[string]fwschema.Schema, diag.Diagnostics) {
+	resourceIdentitySchemas := make(map[string]fwschema.Schema)
+
+	resourceFuncs, diags := s.ResourceFuncs(ctx)
+
+	for typeName, resourceFunc := range resourceFuncs {
+		r := resourceFunc()
+
+		rWithIdentity, ok := r.(resource.ResourceWithIdentity)
+		if !ok {
+			// Resource identity support is optional, so we can skip resources that don't implement it.
+			continue
+		}
+
+		identitySchemaReq := resource.IdentitySchemaRequest{}
+		identitySchemaResp := resource.IdentitySchemaResponse{}
+
+		logging.FrameworkTrace(ctx, "Calling provider defined Resource IdentitySchema method", map[string]interface{}{logging.KeyResourceType: typeName})
+		rWithIdentity.IdentitySchema(ctx, identitySchemaReq, &identitySchemaResp)
+		logging.FrameworkTrace(ctx, "Called provider defined Resource IdentitySchema method", map[string]interface{}{logging.KeyResourceType: typeName})
+
+		diags.Append(identitySchemaResp.Diagnostics...)
+
+		if identitySchemaResp.Diagnostics.HasError() {
+			continue
+		}
+
+		validateDiags := identitySchemaResp.IdentitySchema.ValidateImplementation(ctx)
+
+		diags.Append(validateDiags...)
+
+		if validateDiags.HasError() {
+			continue
+		}
+
+		resourceIdentitySchemas[typeName] = identitySchemaResp.IdentitySchema
+	}
+
+	return resourceIdentitySchemas, diags
 }
