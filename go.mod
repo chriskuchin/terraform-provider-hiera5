@@ -1,6 +1,6 @@
 module github.com/chriskuchin/terraform-provider-hiera5
 
-go 1.20
+go 1.23.0
 
 require (
 	github.com/hashicorp/terraform-plugin-docs v0.20.1
@@ -21,7 +21,7 @@ require (
 	github.com/ProtonMail/go-crypto v1.1.0-alpha.2-proton // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
 	github.com/bmatcuk/doublestar/v4 v4.7.1 // indirect
-	github.com/cloudflare/circl v1.3.7 // indirect
+	github.com/cloudflare/circl v1.6.1 // indirect
 	github.com/hashicorp/cli v1.1.6 // indirect
 	github.com/hashicorp/go-cty v1.4.1-0.20200414143053-d3edf31b6320 // indirect
 	github.com/hashicorp/go-retryablehttp v0.7.7 // indirect
